@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Realtime Watch Party</title>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <style>
+    body { font-family: sans-serif; background: #121212; color: #fff; text-align: center; }
+    video { width: 80%; max-width: 900px; margin: 20px 0; background: #000; }
+    #chat-box { width: 80%; max-width: 900px; margin: auto; background: #1e1e1e; padding: 10px; border-radius: 8px; }
+    #messages { height: 200px; overflow-y: scroll; border: 1px solid #333; padding: 10px; text-align: left; }
+    input, button { padding: 10px; margin-top: 10px; width: 70%; }
+  </style>
+</head>
+<body>
+
+<h1>🎬 Realtime Watch Party</h1>
+
+<input type="text" id="videoURL" placeholder="Paste .mp4 or .m3u8 URL" style="width: 60%;" />
+<button onclick="loadVideo()">Load Video</button><br>
+
+<video id="video" controls></video>
+
+<div id="chat-box">
+  <h2>💬 Chat</h2>
+  <div id="messages"></div>
+  <input type="text" id="messageInput" placeholder="Type a message..." />
+  <button onclick="sendMessage()">Send</button>
+</div>
+
+<script>
+  // 🔥 Firebase config
+  const firebaseConfig = {
+  apiKey: "AIzaSyA1XkvI6dipWzYHf2nIhN_Evq-zguCTwqE",
+  authDomain: "video-a228a.firebaseapp.com",
+  projectId: "video-a228a",
+  storageBucket: "video-a228a.firebasestorage.app",
+  messagingSenderId: "75769438610",
+  appId: "1:75769438610:web:25da74d8d913b21bf0614b",
+  measurementId: "G-3Y6BF65BCM"
+};
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  const room = 'watch-room-1'; // You can allow dynamic rooms later
+
+  const video = document.getElementById('video');
+
+  // 🔄 Sync video load
+  function loadVideo() {
+    const url = document.getElementById('videoURL').value;
+    db.ref(`${room}/videoUrl`).set(url);
+  }
+
+  // Load video on all clients
+  db.ref(`${room}/videoUrl`).on('value', snapshot => {
+    const url = snapshot.val();
+    if (!url) return;
+    if (url.endsWith('.m3u8')) {
+      if (Hls.isSupported()) {
+        const hls = new Hls();
+        hls.loadSource(url);
+        hls.attachMedia(video);
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = url;
+      } else {
+        alert('Your browser doesn’t support HLS.');
+      }
+    } else {
+      video.src = url;
+    }
+  });
+
+  // 🔁 Sync playback
+  video.addEventListener('play', () => db.ref(`${room}/sync`).set({ action: 'play', time: video.currentTime }));
+  video.addEventListener('pause', () => db.ref(`${room}/sync`).set({ action: 'pause', time: video.currentTime }));
+  video.addEventListener('seeked', () => db.ref(`${room}/sync`).set({ action: 'seek', time: video.currentTime }));
+
+  db.ref(`${room}/sync`).on('value', snapshot => {
+    const data = snapshot.val();
+    if (!data || syncing) return;
+    syncing = true;
+    if (Math.abs(video.currentTime - data.time) > 1) video.currentTime = data.time;
+    if (data.action === 'play') video.play();
+    if (data.action === 'pause') video.pause();
+    syncing = false;
+  });
+
+  let syncing = false;
+
+  // 💬 Chat
+  function sendMessage() {
+    const input = document.getElementById('messageInput');
+    const text = input.value.trim();
+    if (text) {
+      db.ref(`${room}/messages`).push({ text });
+      input.value = '';
+    }
+  }
+
+  db.ref(`${room}/messages`).on('child_added', snapshot => {
+    const msg = snapshot.val();
+    const msgDiv = document.createElement('div');
+    msgDiv.textContent = msg.text;
+    document.getElementById('messages').appendChild(msgDiv);
+    const messagesDiv = document.getElementById('messages');
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  });
+</script>
+
+</body>
+</html>
