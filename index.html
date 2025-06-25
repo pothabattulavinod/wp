@@ -2,36 +2,41 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Realtime Watch Party</title>
+  <title>Watch Party Room</title>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <style>
-    body { font-family: sans-serif; background: #121212; color: #fff; text-align: center; }
-    video { width: 80%; max-width: 900px; margin: 20px 0; background: #000; }
-    #chat-box { width: 80%; max-width: 900px; margin: auto; background: #1e1e1e; padding: 10px; border-radius: 8px; }
-    #messages { height: 200px; overflow-y: scroll; border: 1px solid #333; padding: 10px; text-align: left; }
-    input, button { padding: 10px; margin-top: 10px; width: 70%; }
+    body { font-family: Arial, sans-serif; background: #111; color: #eee; text-align: center; margin: 0; padding: 20px; }
+    video { width: 80%; max-width: 900px; margin: 20px 0; background: black; }
+    input, button { padding: 10px; margin: 5px; border: none; border-radius: 4px; }
+    #chat { width: 80%; max-width: 900px; margin: auto; }
+    #messages { height: 200px; overflow-y: scroll; background: #222; padding: 10px; border-radius: 6px; margin-top: 10px; text-align: left; }
+    #loadSection { margin-bottom: 20px; }
+    .host-only { display: none; }
   </style>
 </head>
 <body>
 
 <h1>🎬 Realtime Watch Party</h1>
+<p id="status">Connecting...</p>
 
-<input type="text" id="videoURL" placeholder="Paste .mp4 or .m3u8 URL" style="width: 60%;" />
-<button onclick="loadVideo()">Load Video</button><br>
+<div id="loadSection" class="host-only">
+  <input type="text" id="videoURL" placeholder="Paste .mp4 or .m3u8 URL" style="width:60%;" />
+  <button onclick="loadVideo()">Load Video</button>
+</div>
 
 <video id="video" controls></video>
 
-<div id="chat-box">
+<div id="chat">
   <h2>💬 Chat</h2>
   <div id="messages"></div>
-  <input type="text" id="messageInput" placeholder="Type a message..." />
+  <input type="text" id="chatInput" placeholder="Type a message..." />
   <button onclick="sendMessage()">Send</button>
 </div>
 
 <script>
-  // 🔥 Firebase config
+  // 🔧 Firebase config
   const firebaseConfig = {
   apiKey: "AIzaSyA1XkvI6dipWzYHf2nIhN_Evq-zguCTwqE",
   authDomain: "video-a228a.firebaseapp.com",
@@ -41,21 +46,35 @@
   appId: "1:75769438610:web:25da74d8d913b21bf0614b",
   measurementId: "G-3Y6BF65BCM"
 };
-
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
 
-  const room = 'watch-room-1'; // You can allow dynamic rooms later
+  // 🌐 Room support
+  const urlParams = new URLSearchParams(window.location.search);
+  const room = urlParams.get('room') || 'default-room';
+
+  let username = prompt("Enter your name:");
+  if (!username) username = "Guest" + Math.floor(Math.random() * 1000);
+
+  let isHost = false;
+  const hostKey = `${room}_host`;
 
   const video = document.getElementById('video');
+  const statusEl = document.getElementById('status');
 
-  // 🔄 Sync video load
-  function loadVideo() {
-    const url = document.getElementById('videoURL').value;
-    db.ref(`${room}/videoUrl`).set(url);
-  }
+  // 👑 Determine host
+  db.ref(hostKey).once('value', snap => {
+    if (!snap.exists()) {
+      isHost = true;
+      db.ref(hostKey).set(username);
+      document.querySelectorAll('.host-only').forEach(el => el.style.display = 'block');
+      statusEl.textContent = `👑 You are the host (${username})`;
+    } else {
+      statusEl.textContent = `🧑‍🤝‍🧑 You joined as ${username}`;
+    }
+  });
 
-  // Load video on all clients
+  // 🎥 Load video URL from Firebase
   db.ref(`${room}/videoUrl`).on('value', snapshot => {
     const url = snapshot.val();
     if (!url) return;
@@ -67,36 +86,58 @@
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
         video.src = url;
       } else {
-        alert('Your browser doesn’t support HLS.');
+        alert('Your browser does not support HLS');
       }
     } else {
       video.src = url;
     }
   });
 
-  // 🔁 Sync playback
-  video.addEventListener('play', () => db.ref(`${room}/sync`).set({ action: 'play', time: video.currentTime }));
-  video.addEventListener('pause', () => db.ref(`${room}/sync`).set({ action: 'pause', time: video.currentTime }));
-  video.addEventListener('seeked', () => db.ref(`${room}/sync`).set({ action: 'seek', time: video.currentTime }));
+  // ✅ Load video (host only)
+  function loadVideo() {
+    if (!isHost) return alert("Only host can load video.");
+    const url = document.getElementById('videoURL').value;
+    if (url.trim()) {
+      db.ref(`${room}/videoUrl`).set(url);
+    }
+  }
 
+  // 🔄 Video sync (only host triggers, others follow)
+  video.addEventListener('play', () => {
+    if (isHost) syncVideo('play', video.currentTime);
+  });
+  video.addEventListener('pause', () => {
+    if (isHost) syncVideo('pause', video.currentTime);
+  });
+  video.addEventListener('seeked', () => {
+    if (isHost) syncVideo('seek', video.currentTime);
+  });
+
+  function syncVideo(action, time) {
+    db.ref(`${room}/sync`).set({ action, time });
+  }
+
+  let syncing = false;
   db.ref(`${room}/sync`).on('value', snapshot => {
     const data = snapshot.val();
-    if (!data || syncing) return;
+    if (!data || isHost) return;
+
     syncing = true;
-    if (Math.abs(video.currentTime - data.time) > 1) video.currentTime = data.time;
+    if (Math.abs(video.currentTime - data.time) > 1) {
+      video.currentTime = data.time;
+    }
     if (data.action === 'play') video.play();
     if (data.action === 'pause') video.pause();
+    // seek doesn't need explicit action
     syncing = false;
   });
 
-  let syncing = false;
-
   // 💬 Chat
   function sendMessage() {
-    const input = document.getElementById('messageInput');
+    const input = document.getElementById('chatInput');
     const text = input.value.trim();
     if (text) {
-      db.ref(`${room}/messages`).push({ text });
+      db.ref(`${room}/messages`).push({ name: username, text });
       input.value = '';
     }
   }
@@ -104,10 +145,9 @@
   db.ref(`${room}/messages`).on('child_added', snapshot => {
     const msg = snapshot.val();
     const msgDiv = document.createElement('div');
-    msgDiv.textContent = msg.text;
+    msgDiv.textContent = `👤 ${msg.name}: ${msg.text}`;
     document.getElementById('messages').appendChild(msgDiv);
-    const messagesDiv = document.getElementById('messages');
-    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
   });
 </script>
 
