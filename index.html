@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Watch Party Room</title>
+  <title>Realtime Watch Party</title>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
@@ -13,7 +13,7 @@
     #chat { width: 80%; max-width: 900px; margin: auto; }
     #messages { height: 200px; overflow-y: scroll; background: #222; padding: 10px; border-radius: 6px; margin-top: 10px; text-align: left; }
     #loadSection { margin-bottom: 20px; }
-    .host-only { display: none; }
+    .host-only { display: none !important; }
   </style>
 </head>
 <body>
@@ -36,7 +36,7 @@
 </div>
 
 <script>
-  // 🔧 Firebase config
+  // 🔧 Replace this with your Firebase config
   const firebaseConfig = {
   apiKey: "AIzaSyA1XkvI6dipWzYHf2nIhN_Evq-zguCTwqE",
   authDomain: "video-a228a.firebaseapp.com",
@@ -46,38 +46,49 @@
   appId: "1:75769438610:web:25da74d8d913b21bf0614b",
   measurementId: "G-3Y6BF65BCM"
 };
+
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
-
-  // 🌐 Room support
-  const urlParams = new URLSearchParams(window.location.search);
-  const room = urlParams.get('room') || 'default-room';
-
-  let username = prompt("Enter your name:");
-  if (!username) username = "Guest" + Math.floor(Math.random() * 1000);
-
-  let isHost = false;
-  const hostKey = `${room}_host`;
 
   const video = document.getElementById('video');
   const statusEl = document.getElementById('status');
 
-  // 👑 Determine host
-  db.ref(hostKey).once('value', snap => {
-    if (!snap.exists()) {
-      isHost = true;
-      db.ref(hostKey).set(username);
-      document.querySelectorAll('.host-only').forEach(el => el.style.display = 'block');
-      statusEl.textContent = `👑 You are the host (${username})`;
-    } else {
-      statusEl.textContent = `🧑‍🤝‍🧑 You joined as ${username}`;
-    }
-  });
+  // 🌐 Room from URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const room = urlParams.get('room') || 'default-room';
+  const hostKey = `${room}_host`;
 
-  // 🎥 Load video URL from Firebase
+  // 👤 Ask username
+  let username = prompt("Enter your name:");
+  if (!username) username = "Guest" + Math.floor(Math.random() * 1000);
+
+  let isHost = false;
+
+  // 👑 Attempt to claim host after Firebase connects
+  function tryClaimHost() {
+    db.ref('.info/connected').on('value', snap => {
+      if (snap.val() !== true) return;
+
+      db.ref(hostKey).once('value', snapshot => {
+        if (!snapshot.exists()) {
+          isHost = true;
+          db.ref(hostKey).set(username);
+          document.querySelectorAll('.host-only').forEach(el => el.style.display = 'block');
+          statusEl.textContent = `👑 You are the host (${username})`;
+        } else {
+          statusEl.textContent = `🧑‍🤝‍🧑 You joined as ${username}`;
+        }
+      });
+    });
+  }
+
+  tryClaimHost();
+
+  // 🎥 Load video from Firebase
   db.ref(`${room}/videoUrl`).on('value', snapshot => {
     const url = snapshot.val();
     if (!url) return;
+
     if (url.endsWith('.m3u8')) {
       if (Hls.isSupported()) {
         const hls = new Hls();
@@ -86,23 +97,26 @@
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
         video.src = url;
       } else {
-        alert('Your browser does not support HLS');
+        alert('Your browser does not support HLS.');
       }
     } else {
       video.src = url;
     }
   });
 
-  // ✅ Load video (host only)
+  // ⬆️ Load video URL (host only)
   function loadVideo() {
-    if (!isHost) return alert("Only host can load video.");
+    if (!isHost) {
+      alert("Only the host can load a video.");
+      return;
+    }
     const url = document.getElementById('videoURL').value;
     if (url.trim()) {
       db.ref(`${room}/videoUrl`).set(url);
     }
   }
 
-  // 🔄 Video sync (only host triggers, others follow)
+  // 🔄 Sync playback (host only triggers)
   video.addEventListener('play', () => {
     if (isHost) syncVideo('play', video.currentTime);
   });
@@ -128,7 +142,6 @@
     }
     if (data.action === 'play') video.play();
     if (data.action === 'pause') video.pause();
-    // seek doesn't need explicit action
     syncing = false;
   });
 
@@ -146,8 +159,9 @@
     const msg = snapshot.val();
     const msgDiv = document.createElement('div');
     msgDiv.textContent = `👤 ${msg.name}: ${msg.text}`;
-    document.getElementById('messages').appendChild(msgDiv);
-    document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+    const messages = document.getElementById('messages');
+    messages.appendChild(msgDiv);
+    messages.scrollTop = messages.scrollHeight;
   });
 </script>
 
