@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <script src="https://ssl.p.jwpcdn.com/player/v/8.32.0/jwplayer.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <script>
+    jwplayer.key = 'cLGMn8T20tGvW+0eXPhq4NNmLB57TrscPjd1IyJF84o=';
+  </script>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+    }
+
+    #player {
+      width: 100vw;
+      height: 100vh;
+      background-color: #000;
+      touch-action: none;
+    }
+
+    .jwplayer video {
+      touch-action: none;
+      transform-origin: center center !important;
+      transition: transform 0.1s ease;
+    }
+
+    .jw-title-primary {
+      font-weight: bold;
+      font-size: 1.5em;
+      color: #ff6347 !important;
+    }
+
+    .jwplayer .jw-progress {
+      background-color: #ff6347 !important;
+    }
+
+    .jwplayer .jw-text-time {
+      color: #ff6347 !important;
+    }
+
+    .jwplayer .jw-button:hover {
+      background: #ff6347 !important;
+    }
+
+    .jw-rightclick .jw-reset {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="player"></div>
+
+  <script>
+    const masterPlaylistContent = `#EXTM3U
+#EXT-X-VERSION:3
+#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",NAME="Alternative Audio",DEFAULT=YES,AUTOSELECT=YES,LANGUAGE="en",URI="https://raw.githubusercontent.com/pothabattulavinod/m/refs/heads/main/shyamsraudio/playlist.m3u8"
+#EXT-X-STREAM-INF:BANDWIDTH=3000000,RESOLUTION=1920x1080,CODECS="avc1.4d401f",AUDIO="audio"
+https://raw.githubusercontent.com/pothabattulavinod/m/refs/heads/main/shyamsr/video.m3u8
+#EXT-X-STREAM-INF:BANDWIDTH=1000000,RESOLUTION=640x360,CODECS="avc1.4d401f",AUDIO="audio"
+https://raw.githubusercontent.com/pothabattulavinod/m/refs/heads/main/shyamsr/video.m3u8`;
+
+    const blob = new Blob([masterPlaylistContent], { type: 'application/vnd.apple.mpegurl' });
+    const masterPlaylistUrl = URL.createObjectURL(blob);
+
+    const jwp = jwplayer('player');
+    const pageUrl = window.location.href;
+    const playbackKey = `jwplayer-playback-position-${pageUrl}`;
+    const savedPosition = localStorage.getItem(playbackKey);
+
+    jwp.setup({
+      aspectratio: "16:9",
+      width: "100%",
+      height: "100%",
+      sources: [{ file: masterPlaylistUrl, type: "hls", default: true }],
+      primary: "html5",
+      controls: true,
+      hlshtml: true,
+      abr: { enabled: false },
+      cast: { enabled: true },
+      tracks: [{
+        file: "https://raw.githubusercontent.com/pothabattulavinod/wp/refs/heads/main/shyam.vtt",
+        label: "English",
+        kind: "captions",
+        default: true,
+        language: "en"
+      }]
+    });
+
+    jwp.on('ready', function () {
+      if (savedPosition && !isNaN(savedPosition)) {
+        jwp.seek(parseFloat(savedPosition));
+      }
+
+      // Forward Button (10s)
+      const playerContainer = document.querySelector('#player');
+      const rewindContainer = playerContainer.querySelector('.jw-display-icon-rewind');
+      const forwardContainer = rewindContainer.cloneNode(true);
+      const forwardDisplayButton = forwardContainer.querySelector('.jw-icon-rewind');
+      forwardDisplayButton.style.transform = "scaleX(-1)";
+      forwardDisplayButton.ariaLabel = "Forward 10 Seconds";
+      const nextContainer = playerContainer.querySelector('.jw-display-icon-next');
+      nextContainer?.parentNode?.insertBefore(forwardContainer, nextContainer);
+      playerContainer.querySelector('.jw-display-icon-next').style.display = 'none';
+      const buttonContainer = playerContainer.querySelector('.jw-button-container');
+      const rewindControlBarButton = buttonContainer.querySelector(".jw-icon-rewind");
+      const forwardControlBarButton = rewindControlBarButton.cloneNode(true);
+      forwardControlBarButton.style.transform = "scaleX(-1)";
+      forwardControlBarButton.ariaLabel = "Forward 10 Seconds";
+      rewindControlBarButton.parentNode.insertBefore(forwardControlBarButton, rewindControlBarButton.nextElementSibling);
+      [forwardDisplayButton, forwardControlBarButton].forEach(button => {
+        button.onclick = () => jwp.seek(jwp.getPosition() + 10);
+      });
+
+      // 🔍 Pinch-to-Zoom Support
+      const video = document.querySelector(".jwplayer video");
+      let initialDistance = null, scale = 1;
+
+      video.addEventListener("touchstart", (e) => {
+        if (e.touches.length === 2) {
+          const dx = e.touches[0].clientX - e.touches[1].clientX;
+          const dy = e.touches[0].clientY - e.touches[1].clientY;
+          initialDistance = Math.sqrt(dx * dx + dy * dy);
+        }
+      });
+
+      video.addEventListener("touchmove", (e) => {
+        if (e.touches.length === 2 && initialDistance) {
+          e.preventDefault();
+          const dx = e.touches[0].clientX - e.touches[1].clientX;
+          const dy = e.touches[0].clientY - e.touches[1].clientY;
+          const currentDistance = Math.sqrt(dx * dx + dy * dy);
+          let zoomFactor = currentDistance / initialDistance;
+          scale = Math.min(3, Math.max(1, zoomFactor));
+          video.style.transform = `scale(${scale})`;
+        }
+      }, { passive: false });
+
+      video.addEventListener("touchend", () => {
+        initialDistance = null;
+      });
+    });
+
+    jwp.on('time', e => localStorage.setItem(playbackKey, e.position));
+    jwp.on('complete', () => localStorage.removeItem(playbackKey));
+  </script>
+</body>
+</html>
