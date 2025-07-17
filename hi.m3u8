@@ -1,0 +1,13 @@
+#EXTM3U
+#EXT-X-VERSION:3
+
+# External audio track
+#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",NAME="Telugu Audio",DEFAULT=YES,AUTOSELECT=YES,LANGUAGE="te",URI="https://raw.githubusercontent.com/pothabattulavinod/se/refs/heads/main/ahi/audio.m3u8"
+
+# Link video parts using audio group
+#EXT-X-STREAM-INF:BANDWIDTH=3000000,RESOLUTION=1920x1080,CODECS="avc1.4d401f",AUDIO="audio"
+https://raw.githubusercontent.com/pothabattulavinod/cc/refs/heads/main/hitpart1/hit3_part1.m3u8
+#EXT-X-STREAM-INF:BANDWIDTH=3000000,RESOLUTION=1920x1080,CODECS="avc1.4d401f",AUDIO="audio"
+https://raw.githubusercontent.com/pothabattulavinod/cc/refs/heads/main/hit3part2/hit3_part2.m3u8
+#EXT-X-STREAM-INF:BANDWIDTH=3000000,RESOLUTION=1920x1080,CODECS="avc1.4d401f",AUDIO="audio"
+https://raw.githubusercontent.com/pothabattulavinod/cc/refs/heads/main/hit3part3/hit3_part3.m3u8
