@@ -1,0 +1,21 @@
+<video id="video" controls width="640" height="360"></video>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<script>
+  // The URL is not in HTML, only in JS
+  const playlist = {
+    url: "https://pothabattulavinod.github.io/s/Mahavatar_Narsimha/video.m3u8"
+  };
+
+  const video = document.getElementById('video');
+
+  if(Hls.isSupported()) {
+    const hls = new Hls();
+    hls.loadSource(playlist.url);  // HLS.js uses the URL
+    hls.attachMedia(video);
+    hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
+  } else if(video.canPlayType('application/vnd.apple.mpegurl')) {
+    // Fallback for Safari/iOS
+    video.src = playlist.url;
+    video.addEventListener('loadedmetadata', () => video.play());
+  }
+</script>
