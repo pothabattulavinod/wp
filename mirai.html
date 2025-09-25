@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <script src="https://ssl.p.jwpcdn.com/player/v/8.32.0/jwplayer.js"></script>
+  <!-- Load hls.js -->
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <script>
     jwplayer.key = 'cLGMn8T20tGvW+0eXPhq4NNmLB57TrscPjd1IyJF84o=';
@@ -19,23 +20,8 @@
       height: 100%;
       overflow: hidden;
       background-color: #000;
-      position: relative;
     }
     
-    /* Poster overlay fills the player */
-    #poster-overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-size: cover;      /* Fill container completely */
-      background-position: center; /* Center the image */
-      background-repeat: no-repeat;
-      z-index: 10;
-      display: none;
-    }
-
     /* Custom player styles */
     .jw-title-primary {
       font-weight: bold;
@@ -61,11 +47,11 @@
   </style>
 </head>
 <body>
-  <div id="player">
-    <div id="poster-overlay"></div>
-  </div>
+  <div id="player"></div>
   
   <script>
+    // Build an inline HLS master playlist as a string.
+    // The EXT‑X‑MEDIA tag defines the alternative audio track.
     const masterPlaylistContent = `#EXTM3U
 #EXT-X-VERSION:3
 #EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",NAME="Alternative Audio",DEFAULT=YES,AUTOSELECT=YES,LANGUAGE="en",URI=""
@@ -73,15 +59,18 @@
 https://raw.githubusercontent.com/pothabattulavinod/s/refs/heads/main/mirai/video.m3u8
 #EXT-X-STREAM-INF:BANDWIDTH=1000000,RESOLUTION=640x360,CODECS="avc1.4d401f",AUDIO="audio"
 https://raw.githubusercontent.com/pothabattulavinod/s/refs/heads/main/mirai/video.m3u8`;
-
+    
+    // Create a Blob from the master playlist string and generate an object URL.
     const blob = new Blob([masterPlaylistContent], { type: 'application/vnd.apple.mpegurl' });
     const masterPlaylistUrl = URL.createObjectURL(blob);
-
+    
     var jwp = jwplayer('player');
     var pageUrl = window.location.href;
     var playbackKey = `jwplayer-playback-position-${pageUrl}`;
+    
+    // Load saved position from localStorage
     var savedPosition = localStorage.getItem(playbackKey);
-
+    
     jwp.setup({
       aspectratio: "16:9",
       width: "100%",
@@ -97,26 +86,51 @@ https://raw.githubusercontent.com/pothabattulavinod/s/refs/heads/main/mirai/vide
       title: "",
       bufferLength: 5,
       hlshtml: true,
-      html5: { hlsjsConfig: {} },
-      abr: { enabled: false },
-      cast: { enabled: true },
+      // hls.js configuration (custom options can be added here if needed)
+      html5: {
+        hlsjsConfig: {}
+      },
+      // Disable automatic ABR switching so manual quality selection is preserved.
+      abr: {
+        enabled: false
+      },
+      cast: {
+					enabled: true
+				},
       controls: true,
       displayPlaybackLabel: false,
+      /* Removed playbackRateControls: true, */
       liveTimeout: 2,
       dvrSeekLimit: 60,
       dvrWindow: 3600,
-      logo: { file: "", position: "top-right", margin: 10, link: "", hide: false, width: 100, height: 50 },
-      tracks: [{ file: "", label: "English", kind: "captions", "default": true, language: "en" }]
+      logo: {
+        file: "",
+        position: "top-right",
+        margin: 10,
+        link: "",
+        hide: false,
+        width: 100,
+        height: 50
+      },
+      // Subtitles track
+      tracks: [{
+        file: "",
+        label: "English",
+        kind: "captions",
+        "default": true,
+        language: "en"
+      }]
     });
-
+    
     jwp.on('ready', function () {
+      // Seek to the saved position if available
       if (savedPosition && !isNaN(savedPosition)) {
         jwp.seek(parseFloat(savedPosition));
       }
-
+    
       const playerContainer = document.querySelector('#player');
-
-      // Forward/Rewind buttons
+    
+      // Display icon
       const rewindContainer = playerContainer.querySelector('.jw-display-icon-rewind');
       const forwardContainer = rewindContainer.cloneNode(true);
       const forwardDisplayButton = forwardContainer.querySelector('.jw-icon-rewind');
@@ -124,39 +138,45 @@ https://raw.githubusercontent.com/pothabattulavinod/s/refs/heads/main/mirai/vide
       forwardDisplayButton.ariaLabel = "Forward 10 Seconds";
       const nextContainer = playerContainer.querySelector('.jw-display-icon-next');
       nextContainer.parentNode.insertBefore(forwardContainer, nextContainer);
-
-      playerContainer.querySelector('.jw-display-icon-next').style.display = 'none';
+    
+      // Control bar icon
+      playerContainer.querySelector('.jw-display-icon-next').style.display = 'none'; // Hide next button
       const buttonContainer = playerContainer.querySelector('.jw-button-container');
       const rewindControlBarButton = buttonContainer.querySelector(".jw-icon-rewind");
       const forwardControlBarButton = rewindControlBarButton.cloneNode(true);
       forwardControlBarButton.style.transform = "scaleX(-1)";
       forwardControlBarButton.ariaLabel = "Forward 10 Seconds";
       rewindControlBarButton.parentNode.insertBefore(forwardControlBarButton, rewindControlBarButton.nextElementSibling);
-
+    
+      // Add onclick handlers
       [forwardDisplayButton, forwardControlBarButton].forEach(button => {
-        button.onclick = () => { jwp.seek(jwp.getPosition() + 10); };
+        button.onclick = () => {
+          jwp.seek(jwp.getPosition() + 10);
+        };
       });
-
-      // --- Poster on pause ---
-      const posterOverlay = document.getElementById('poster-overlay');
-      const posterUrl = 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQRC422XQCyYBnrWANi5Mwg2LoME8d1hIst32d9-bm5bg&s=10'; // Replace with your poster image
-      posterOverlay.style.backgroundImage = `url('${posterUrl}')`;
-
-      if (jwp.getState() === 'idle') { posterOverlay.style.display = 'block'; }
-
-      jwp.on('pause', () => { posterOverlay.style.display = 'block'; });
-      jwp.on('play', () => { posterOverlay.style.display = 'none'; });
-      jwp.on('complete', () => { posterOverlay.style.display = 'block'; });
     });
-
-    jwp.on('time', function (event) { localStorage.setItem(playbackKey, event.position); });
-    jwp.on('complete', function () { localStorage.removeItem(playbackKey); });
-
+    
+    // Save the current playback position on time update using localStorage
+    jwp.on('time', function (event) {
+      localStorage.setItem(playbackKey, event.position);
+    });
+    
+    // Clear the saved position if the video ends
+    jwp.on('complete', function () {
+      localStorage.removeItem(playbackKey);
+    });
+    
+    // --- hls.js support function ---
     function initHlsFunction() {
       if (typeof Hls !== "undefined") {
-        if (Hls.isSupported()) { console.log("hls.js is supported and ready."); }
-        else { console.log("Using native HLS support (or HLS is not supported)."); }
-      } else { console.log("hls.js not loaded."); }
+        if (Hls.isSupported()) {
+          console.log("hls.js is supported and ready.");
+        } else {
+          console.log("Using native HLS support (or HLS is not supported).");
+        }
+      } else {
+        console.log("hls.js not loaded.");
+      }
     }
     initHlsFunction();
   </script>
