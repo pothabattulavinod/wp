@@ -30,7 +30,7 @@
     }
     
     .jwplayer .jw-progress {
-      background-color: #ff6347 !important;
+      background-color:  #06b6d4 !important;
     }
     
     .jwplayer .jw-text-time {
@@ -50,56 +50,43 @@
   <div id="player"></div>
   
   <script>
-    // Build an inline HLS master playlist as a string.
-    // The EXT‑X‑MEDIA tag defines the alternative audio track.
-    const masterPlaylistContent = `#EXTM3U
-#EXT-X-VERSION:3
-#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",NAME="Alternative Audio",DEFAULT=YES,AUTOSELECT=YES,LANGUAGE="en",URI=""
-#EXT-X-STREAM-INF:BANDWIDTH=3000000,RESOLUTION=1920x1080,CODECS="avc1.4d401f",AUDIO="audio"
-https://raw.githubusercontent.com/pothabattulavinod/m/refs/heads/main/jersey/video.m3u8
-#EXT-X-STREAM-INF:BANDWIDTH=1000000,RESOLUTION=640x360,CODECS="avc1.4d401f",AUDIO="audio"
-https://raw.githubusercontent.com/pothabattulavinod/m/refs/heads/main/jersey/video.m3u8`;
-    
-    // Create a Blob from the master playlist string and generate an object URL.
-    const blob = new Blob([masterPlaylistContent], { type: 'application/vnd.apple.mpegurl' });
-    const masterPlaylistUrl = URL.createObjectURL(blob);
-    
     var jwp = jwplayer('player');
     var pageUrl = window.location.href;
     var playbackKey = `jwplayer-playback-position-${pageUrl}`;
     
     // Load saved position from localStorage
     var savedPosition = localStorage.getItem(playbackKey);
-    
+
     jwp.setup({
       aspectratio: "16:9",
       width: "100%",
       height: "100%",
       sources: [{
-        file: masterPlaylistUrl,
+        file: "https://pothabattulavinod.github.io/pay/jersey.m3u8", // ✅ Master Playlist
         type: "hls",
         default: true
       }],
       image: "",
-      primary: "html5",
+      primary: "html5",   // ✅ Ensures iPhone uses native playback
       preload: "auto",
       title: "",
       bufferLength: 5,
-      hlshtml: true,
-      // hls.js configuration (custom options can be added here if needed)
+      hlshtml: true,      // ✅ Enable HTML5 HLS fallback
       html5: {
-        hlsjsConfig: {}
+        hlsjsConfig: {
+          // Optional HLS.js tuning
+          liveSyncDuration: 3,
+          maxBufferLength: 30
+        }
       },
-      // Disable automatic ABR switching so manual quality selection is preserved.
       abr: {
-        enabled: false
+        enabled: true     // ✅ Allow adaptive bitrate switching
       },
       cast: {
-					enabled: true
-				},
+        enabled: true
+      },
       controls: true,
       displayPlaybackLabel: false,
-      /* Removed playbackRateControls: true, */
       liveTimeout: 2,
       dvrSeekLimit: 60,
       dvrWindow: 3600,
@@ -156,26 +143,26 @@ https://raw.githubusercontent.com/pothabattulavinod/m/refs/heads/main/jersey/vid
       });
     });
     
-    // Save the current playback position on time update using localStorage
+    // Save playback position
     jwp.on('time', function (event) {
       localStorage.setItem(playbackKey, event.position);
     });
     
-    // Clear the saved position if the video ends
+    // Clear position when complete
     jwp.on('complete', function () {
       localStorage.removeItem(playbackKey);
     });
     
-    // --- hls.js support function ---
+    // --- hls.js / Safari fallback ---
     function initHlsFunction() {
       if (typeof Hls !== "undefined") {
         if (Hls.isSupported()) {
-          console.log("hls.js is supported and ready.");
+          console.log("✅ hls.js is supported and running.");
         } else {
-          console.log("Using native HLS support (or HLS is not supported).");
+          console.log("ℹ️ Falling back to native HLS (Safari / iPhone).");
         }
       } else {
-        console.log("hls.js not loaded.");
+        console.log("⚠️ hls.js not loaded, relying on JWPlayer native handling.");
       }
     }
     initHlsFunction();
