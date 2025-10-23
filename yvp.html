@@ -8,44 +8,43 @@
   jwplayer.key = 'cLGMn8T20tGvW+0eXPhq4NNmLB57TrscPjd1IyJF84o=';
 </script>
 <style>
-  html, body {
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;        /* Prevent page scrolling */
-    touch-action: none;      /* Prevent pointer scrolling */
-    -webkit-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
-    background: #000;
-    font-family: sans-serif;
-  }
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;           /* Stop page scroll */
+  touch-action: none;         /* Prevent pointer scrolling */
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  background: #000;
+  font-family: sans-serif;
+}
 
-  #player {
-    width: 100%;
-    height: 100%;
-    outline: none;           /* Remove focus outline */
-  }
+#player {
+  width: 100%;
+  height: 100%;
+  outline: none;              /* Remove focus outline */
+}
 
-  /* Passive HUD overlay */
-  #hud {
-    position: absolute;
-    bottom: 40px;
-    left: 50%;
-    transform: translateX(-50%);
-    color: #fff;
-    font-size: 24px;
-    pointer-events: none;   /* Does not intercept remote keys */
-    background: rgba(0,0,0,0.3);
-    padding: 5px 10px;
-    border-radius: 6px;
-  }
+#hud {
+  position: absolute;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #fff;
+  font-size: 24px;
+  pointer-events: none;
+  background: rgba(0,0,0,0.3);
+  padding: 5px 10px;
+  border-radius: 6px;
+}
 </style>
 </head>
 <body>
 
-<div id="player" tabindex="0"></div>  <!-- Make player focusable -->
+<div id="player" tabindex="0"></div>
 <div id="hud">0:00 / 0:00</div>
 
 <script>
@@ -54,13 +53,22 @@ const hud = document.getElementById("hud");
 const playbackKey = "jw-tv-playback-" + location.href;
 const savedPosition = localStorage.getItem(playbackKey);
 
+// --- Prevent browser bubble/arrow scroll ---
+window.addEventListener('keydown', function(e){
+  const keysToBlock = [37,38,39,40,13,32]; // Left, Up, Right, Down, Enter, Space
+  if(keysToBlock.includes(e.keyCode)){
+    e.preventDefault();        // Stop browser scrolling/focus
+    e.stopPropagation();
+  }
+}, { passive: false });
+
 // --- JWPlayer Setup ---
 jwp.setup({
   file: "https://pothabattulavinod.github.io/pay/og.m3u8",
   type: "hls",
   width: "100%",
   height: "100%",
-  controls: true,           // Full native JWPlayer controls
+  controls: true,             // Native JWPlayer controls
   autostart: true,
   preload: "auto",
   primary: "html5",
@@ -72,10 +80,10 @@ jwp.setup({
   }]
 });
 
-// --- Focus player on ready ---
+// --- Focus player for remote input ---
 jwp.on('ready', () => {
   const playerEl = document.getElementById('player');
-  playerEl.focus();  // Focus player to receive D-pad / Enter keys
+  playerEl.focus();            // Smart TV sends keys to focused element
   if(savedPosition) jwp.seek(parseFloat(savedPosition));
   updateHUD();
 });
@@ -90,13 +98,12 @@ jwp.on('time', e => {
 jwp.on('complete', () => localStorage.removeItem(playbackKey));
 
 // --- HUD update ---
-function updateHUD() {
+function updateHUD(){
   const pos = Math.floor(jwp.getPosition());
   const dur = Math.floor(jwp.getDuration());
   const format = t => `${Math.floor(t/60)}:${String(t%60).padStart(2,'0')}`;
   hud.textContent = `${format(pos)} / ${format(dur)}`;
 }
-
 setInterval(updateHUD, 1000);
 </script>
 
