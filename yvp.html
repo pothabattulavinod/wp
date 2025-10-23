@@ -11,13 +11,22 @@
   html, body {
     margin: 0;
     padding: 0;
-    background: #000;
     width: 100%;
     height: 100%;
-    overflow: hidden;
+    overflow: hidden;        /* Prevent page scrolling */
+    touch-action: none;      /* Prevent pointer scrolling */
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    background: #000;
     font-family: sans-serif;
   }
-  #player { width: 100%; height: 100%; }
+
+  #player {
+    width: 100%;
+    height: 100%;
+    outline: none;           /* Remove focus outline */
+  }
 
   /* Passive HUD overlay */
   #hud {
@@ -27,7 +36,7 @@
     transform: translateX(-50%);
     color: #fff;
     font-size: 24px;
-    pointer-events: none;
+    pointer-events: none;   /* Does not intercept remote keys */
     background: rgba(0,0,0,0.3);
     padding: 5px 10px;
     border-radius: 6px;
@@ -36,7 +45,7 @@
 </head>
 <body>
 
-<div id="player"></div>
+<div id="player" tabindex="0"></div>  <!-- Make player focusable -->
 <div id="hud">0:00 / 0:00</div>
 
 <script>
@@ -45,22 +54,13 @@ const hud = document.getElementById("hud");
 const playbackKey = "jw-tv-playback-" + location.href;
 const savedPosition = localStorage.getItem(playbackKey);
 
-// --- Prevent browser from hijacking bubble keys ---
-window.addEventListener('keydown', function(e) {
-  const keysToBlock = [37,38,39,40,13,32]; // Left, Up, Right, Down, Enter, Space
-  if(keysToBlock.includes(e.keyCode)){
-    e.preventDefault();
-    e.stopPropagation();
-  }
-}, { passive: false });
-
 // --- JWPlayer Setup ---
 jwp.setup({
   file: "https://pothabattulavinod.github.io/pay/og.m3u8",
   type: "hls",
   width: "100%",
   height: "100%",
-  controls: true,      // Full native JWPlayer controls
+  controls: true,           // Full native JWPlayer controls
   autostart: true,
   preload: "auto",
   primary: "html5",
@@ -72,22 +72,24 @@ jwp.setup({
   }]
 });
 
-// Resume playback from last position
-jwp.on("ready", () => {
+// --- Focus player on ready ---
+jwp.on('ready', () => {
+  const playerEl = document.getElementById('player');
+  playerEl.focus();  // Focus player to receive D-pad / Enter keys
   if(savedPosition) jwp.seek(parseFloat(savedPosition));
   updateHUD();
 });
 
-// Save playback position
-jwp.on("time", e => {
+// --- Save playback position ---
+jwp.on('time', e => {
   localStorage.setItem(playbackKey, e.position);
   updateHUD();
 });
 
-// Clear storage on complete
-jwp.on("complete", () => localStorage.removeItem(playbackKey));
+// --- Clear storage on complete ---
+jwp.on('complete', () => localStorage.removeItem(playbackKey));
 
-// --- Passive HUD Update ---
+// --- HUD update ---
 function updateHUD() {
   const pos = Math.floor(jwp.getPosition());
   const dur = Math.floor(jwp.getDuration());
@@ -95,7 +97,6 @@ function updateHUD() {
   hud.textContent = `${format(pos)} / ${format(dur)}`;
 }
 
-// Update HUD every second
 setInterval(updateHUD, 1000);
 </script>
 
