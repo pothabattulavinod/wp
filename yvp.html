@@ -1,190 +1,182 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <script src="https://ssl.p.jwpcdn.com/player/v/8.32.0/jwplayer.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-  <script>
-    jwplayer.key = 'cLGMn8T20tGvW+0eXPhq4NNmLB57TrscPjd1IyJF84o=';
-  </script>
-  <style>
-    body {
-      margin: 0;
-      overflow: hidden;
-      touch-action: none;
-      -webkit-user-select: none;
-      -ms-user-select: none;
-      user-select: none;
-      background-color: #000;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>TV Friendly JWPlayer</title>
 
-    #player {
-      width: 80%;
-      height: 45%;
-      background-color: #000;
-      outline: none;
-    }
+<script src="https://ssl.p.jwpcdn.com/player/v/8.32.0/jwplayer.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<script>
+  jwplayer.key = 'cLGMn8T20tGvW+0eXPhq4NNmLB57TrscPjd1IyJF84o=';
+</script>
 
-    .tv-button {
-      margin: 15px;
-      padding: 15px 30px;
-      font-size: 1.2em;
-      background-color: #222;
-      color: #fff;
-      border: 2px solid #444;
-      border-radius: 8px;
-      cursor: pointer;
-      outline: none;
-    }
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #000;
+    overflow: hidden;
+  }
 
-    .tv-button:focus,
-    #player:focus {
-      border-color: #ff6347;
-      box-shadow: 0 0 20px #ff6347;
-    }
+  #player {
+    width: 100%;
+    height: 100%;
+    background-color: #000;
+  }
 
-    .jw-title-primary {
-      font-weight: bold;
-      font-size: 1.5em;
-      color: #ff6347 !important;
-    }
+  /* JWPlayer Custom Styles */
+  .jw-title-primary {
+    font-weight: bold;
+    font-size: 1.5em;
+    color: #ff6347 !important;
+  }
 
-    .jwplayer .jw-progress {
-      background-color: #06b6d4 !important;
-    }
+  .jwplayer .jw-progress {
+    background-color: #06b6d4 !important;
+  }
 
-    .jwplayer .jw-text-time {
-      color: #ff6347 !important;
-    }
+  .jwplayer .jw-text-time {
+    color: #ff6347 !important;
+  }
 
-    .jwplayer .jw-button:hover {
-      background: #ff6347 !important;
-    }
+  .jwplayer .jw-button:hover {
+    background: #ff6347 !important;
+  }
 
-    .jw-rightclick .jw-reset {
-      display: none;
-    }
-  </style>
+  .jw-rightclick .jw-reset {
+    display: none;
+  }
+
+  /* Focus outline for TV remote navigation */
+  .tv-focused {
+    outline: 3px solid #ff6347 !important;
+    outline-offset: 2px;
+  }
+</style>
 </head>
+
 <body>
-  <!-- JWPlayer -->
-  <div id="player" tabindex="0"></div>
+<div id="player"></div>
 
-  <!-- Custom TV buttons -->
-  <button class="tv-button" tabindex="0" id="rewindBtn">⏪ Rewind 10s</button>
-  <button class="tv-button" tabindex="0" id="forwardBtn">⏩ Forward 10s</button>
-  <button class="tv-button" tabindex="0" id="playPauseBtn">▶️ Play/Pause</button>
+<script>
+  const jwp = jwplayer('player');
+  const pageUrl = window.location.href;
+  const playbackKey = `jwplayer-playback-position-${pageUrl}`;
+  const savedPosition = localStorage.getItem(playbackKey);
 
-  <script>
-    // JWPlayer Setup
-    var jwp = jwplayer('player');
-    var pageUrl = window.location.href;
-    var playbackKey = `jwplayer-playback-position-${pageUrl}`;
-    var savedPosition = localStorage.getItem(playbackKey);
+  // JWPlayer Setup
+  jwp.setup({
+    aspectratio: "16:9",
+    width: "100%",
+    height: "100%",
+    sources: [{
+      file: "https://pothabattulavinod.github.io/pay/og.m3u8",
+      type: "hls",
+      default: true
+    }],
+    primary: "html5",
+    preload: "auto",
+    hlshtml: true,
+    html5: {
+      hlsjsConfig: {
+        liveSyncDuration: 3,
+        maxBufferLength: 30
+      }
+    },
+    abr: { enabled: true },
+    cast: { enabled: true },
+    controls: true,
+    displayPlaybackLabel: false,
+    liveTimeout: 2,
+    dvrSeekLimit: 60,
+    dvrWindow: 3600,
+    tracks: [{
+      file: "https://raw.githubusercontent.com/pothabattulavinod/wp/refs/heads/main/og.vtt",
+      label: "English",
+      kind: "captions",
+      "default": true,
+      language: "en"
+    }],
+    fullscreen: { enabled: true },
+  });
 
-    jwp.setup({
-      aspectratio: "16:9",
-      width: "100%",
-      height: "100%",
-      sources: [{
-        file: "https://pothabattulavinod.github.io/pay/og.m3u8",
-        type: "hls",
-        default: true
-      }],
-      primary: "html5",
-      preload: "auto",
-      hlshtml: true,
-      html5: {
-        hlsjsConfig: {
-          liveSyncDuration: 3,
-          maxBufferLength: 30
+  // Seek to saved position
+  jwp.on('ready', () => {
+    if (savedPosition && !isNaN(savedPosition)) {
+      jwp.seek(parseFloat(savedPosition));
+    }
+
+    const playerContainer = document.querySelector('#player');
+
+    // --- Rewind/Forward Buttons ---
+    function addTVButton(iconClass, ariaLabel, seekSeconds) {
+      const button = document.createElement('div');
+      button.className = `jw-icon-rewind tv-button`;
+      button.style.transform = seekSeconds > 0 ? 'scaleX(-1)' : 'none';
+      button.setAttribute('aria-label', ariaLabel);
+      button.tabIndex = 0;
+      button.onclick = () => jwp.seek(jwp.getPosition() + seekSeconds);
+      button.onkeydown = e => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          jwp.seek(jwp.getPosition() + seekSeconds);
         }
-      },
-      abr: { enabled: true },
-      cast: { enabled: true },
-      controls: true,
-      tracks: [{
-        file: "https://raw.githubusercontent.com/pothabattulavinod/wp/refs/heads/main/og.vtt",
-        label: "English",
-        kind: "captions",
-        "default": true,
-        language: "en"
-      }]
-    });
+      };
+      playerContainer.appendChild(button);
+      return button;
+    }
 
-    jwp.on('ready', function () {
-      if (savedPosition && !isNaN(savedPosition)) {
-        jwp.seek(parseFloat(savedPosition));
-      }
-    });
+    addTVButton('jw-icon-rewind', 'Rewind 10 seconds', -10);
+    addTVButton('jw-icon-rewind', 'Forward 10 seconds', 10);
 
-    jwp.on('time', function (event) {
-      localStorage.setItem(playbackKey, event.position);
-    });
+    // --- TV Focus/Keyboard Navigation ---
+    let focusable = Array.from(playerContainer.querySelectorAll('.tv-button, .jw-controlbar .jw-button'));
+    let focusIndex = 0;
+    focusable[focusIndex].classList.add('tv-focused');
 
-    jwp.on('complete', function () {
-      localStorage.removeItem(playbackKey);
-    });
+    function updateFocus(newIndex) {
+      focusable[focusIndex].classList.remove('tv-focused');
+      focusIndex = newIndex;
+      if (focusIndex < 0) focusIndex = focusable.length - 1;
+      if (focusIndex >= focusable.length) focusIndex = 0;
+      focusable[focusIndex].classList.add('tv-focused');
+    }
 
-    // TV Remote Navigation
-    const focusable = Array.from(document.querySelectorAll('[tabindex="0"]'));
-    let currentIndex = 0;
-
-    // Initial focus
-    focusable[currentIndex].focus();
-
-    document.addEventListener('keydown', (e) => {
-      switch(e.key) {
-        case "ArrowUp":
-          currentIndex = (currentIndex - 1 + focusable.length) % focusable.length;
-          focusable[currentIndex].focus();
-          break;
-        case "ArrowDown":
-          currentIndex = (currentIndex + 1) % focusable.length;
-          focusable[currentIndex].focus();
-          break;
-        case "ArrowLeft":
-          if(focusable[currentIndex].id === 'player'){
-            jwp.seek(jwp.getPosition() - 10);
-          }
-          break;
-        case "ArrowRight":
-          if(focusable[currentIndex].id === 'player'){
-            jwp.seek(jwp.getPosition() + 10);
-          }
-          break;
-        case "Enter":
-        case "OK":
-          focusable[currentIndex].click();
+    document.addEventListener('keydown', e => {
+      switch (e.key) {
+        case 'ArrowRight': updateFocus(focusIndex + 1); break;
+        case 'ArrowLeft': updateFocus(focusIndex - 1); break;
+        case 'Enter':
+        case ' ':
+          focusable[focusIndex].click();
           break;
       }
     });
+  });
 
-    // Custom button actions
-    document.getElementById('rewindBtn').addEventListener('click', () => {
-      jwp.seek(jwp.getPosition() - 10);
-    });
+  // Save playback position
+  jwp.on('time', event => {
+    localStorage.setItem(playbackKey, event.position);
+  });
 
-    document.getElementById('forwardBtn').addEventListener('click', () => {
-      jwp.seek(jwp.getPosition() + 10);
-    });
+  // Clear on complete
+  jwp.on('complete', () => {
+    localStorage.removeItem(playbackKey);
+  });
 
-    document.getElementById('playPauseBtn').addEventListener('click', () => {
-      if(jwp.getState() === "PLAYING") jwp.pause();
-      else jwp.play();
-    });
-
-    // HLS.js fallback check
-    if (typeof Hls !== "undefined") {
-      if (Hls.isSupported()) console.log("✅ hls.js is supported.");
-      else console.log("ℹ️ Native HLS fallback (Safari/TV).");
-    } else console.log("⚠️ hls.js not loaded, relying on JWPlayer native handling.");
-  </script>
+  // hls.js fallback
+  if (typeof Hls !== "undefined") {
+    if (Hls.isSupported()) {
+      console.log("✅ hls.js supported");
+    } else {
+      console.log("ℹ️ Native HLS fallback");
+    }
+  } else {
+    console.log("⚠️ hls.js not loaded");
+  }
+</script>
 </body>
 </html>
