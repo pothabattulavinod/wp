@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script src="https://ssl.p.jwpcdn.com/player/v/8.32.0/jwplayer.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 <script>
   jwplayer.key = 'cLGMn8T20tGvW+0eXPhq4NNmLB57TrscPjd1IyJF84o=';
 </script>
@@ -118,34 +117,38 @@ document.addEventListener("keydown", (e) => {
   const pos = jwp.getPosition();
   const dur = jwp.getDuration();
 
-  // Only keys JS can reliably intercept on TV
-  const tvKeys = [13, 37, 39, 38, 40];
+  // Log every key to detect your remote codes
+  console.log("TV Key Pressed:", e.keyCode, e.key, e.code);
 
-  if (!tvKeys.includes(e.keyCode)) return;
-  e.preventDefault(); e.stopPropagation();
-
-  switch(e.keyCode){
-    case 13: // Enter → play/pause
+  // Handle common smart TV media keys
+  switch(e.keyCode) {
+    case 415: // Play
       if(state === "playing") jwp.pause();
       else jwp.play();
       showHUD();
       updateHUD();
       break;
-    case 37: // Left → rewind 10s
-      jwp.seek(Math.max(0,pos-10));
-      showHUD();
-      break;
-    case 39: // Right → forward 10s
-      jwp.seek(Math.min(dur,pos+10));
-      showHUD();
-      break;
-    case 38: // Up → toggle CC on/off
-      const currentCC = jwp.getCurrentCaptions();
-      jwp.setCurrentCaptions(currentCC === 0 ? 1 : 0);
+    case 413: // Stop
+      jwp.stop();
       showHUD();
       updateHUD();
       break;
-    case 40: // Down → toggle CC again (or could do volume if possible)
+    case 412: // Rewind 10s
+      jwp.seek(Math.max(0, pos-10));
+      showHUD();
+      break;
+    case 417: // Forward 10s
+      jwp.seek(Math.min(dur, pos+10));
+      showHUD();
+      break;
+    case 448: // Volume Down (optional)
+      break;
+    case 447: // Volume Up (optional)
+      break;
+    case 449: // Mute (optional)
+      break;
+    case 10135: // CC toggle (Samsung example)
+    case 46:    // Delete key as fallback
       const ccState = jwp.getCurrentCaptions();
       jwp.setCurrentCaptions(ccState === 0 ? 1 : 0);
       showHUD();
@@ -155,7 +158,7 @@ document.addEventListener("keydown", (e) => {
 });
 
 // --- Update HUD every second ---
-setInterval(updateTimer,1000);
+setInterval(updateTimer, 1000);
 </script>
 </body>
 </html>
