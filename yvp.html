@@ -15,48 +15,27 @@
   }
   #player { width: 100%; height: 100%; }
 
-  /* HUD overlay */
+  /* Optional HUD overlay (time only) */
   #hud {
     position: absolute;
-    bottom: 80px;
+    bottom: 40px;
     left: 50%;
     transform: translateX(-50%);
-    display: flex;
-    gap: 50px;
     color: #fff;
-    font-size: 28px;
-    align-items: center;
-    opacity: 0;
-    transition: opacity 0.3s;
+    font-size: 24px;
     pointer-events: none;
   }
-  #hud.visible { opacity: 1; }
-
-  #hud span { background: rgba(0,0,0,0.4); padding: 10px 15px; border-radius: 10px; }
 </style>
 </head>
 <body>
 <div id="player"></div>
-<div id="hud">
-  <span id="playPause">▶️</span>
-  <span id="rewind">⏪ 10s</span>
-  <span id="forward">⏩ 10s</span>
-  <span id="cc">💬 ON</span>
-  <span id="timer">0:00 / 0:00</span>
-</div>
+<div id="hud" id="timer">0:00 / 0:00</div>
 
 <script>
 const jwp = jwplayer("player");
 const playbackKey = "jw-tv-playback-" + location.href;
 const savedPosition = localStorage.getItem(playbackKey);
-
 const hud = document.getElementById('hud');
-const playPauseEl = document.getElementById('playPause');
-const rewindEl = document.getElementById('rewind');
-const forwardEl = document.getElementById('forward');
-const ccEl = document.getElementById('cc');
-const timerEl = document.getElementById('timer');
-let hudTimeout;
 
 // --- JWPlayer Setup ---
 jwp.setup({
@@ -64,10 +43,10 @@ jwp.setup({
   type: "hls",
   width: "100%",
   height: "100%",
-  controls: true,
-  primary: "html5",
+  controls: true,   // Enable full JWPlayer controls
   autostart: true,
   preload: "auto",
+  primary: "html5",
   tracks: [{
     file: "https://raw.githubusercontent.com/pothabattulavinod/wp/refs/heads/main/og.vtt",
     label: "English",
@@ -91,73 +70,14 @@ jwp.on("time", e => {
 // Clear position on complete
 jwp.on("complete", () => localStorage.removeItem(playbackKey));
 
-// --- HUD Functions ---
-function showHUD() {
-  hud.classList.add('visible');
-  clearTimeout(hudTimeout);
-  hudTimeout = setTimeout(() => hud.classList.remove('visible'), 3000);
-}
-
-function updateHUD() {
-  playPauseEl.textContent = jwp.getState() === "playing" ? "▶️" : "⏸️";
-  const ccIndex = jwp.getCurrentCaptions();
-  ccEl.textContent = ccIndex === 0 ? "💬 OFF" : "💬 ON";
-}
-
+// --- Optional HUD Update ---
 function updateTimer() {
   const pos = Math.floor(jwp.getPosition());
   const dur = Math.floor(jwp.getDuration());
   const format = t => `${Math.floor(t/60)}:${String(t%60).padStart(2,'0')}`;
-  timerEl.textContent = `${format(pos)} / ${format(dur)}`;
+  hud.textContent = `${format(pos)} / ${format(dur)}`;
 }
 
-// --- TV Remote Controls ---
-document.addEventListener("keydown", (e) => {
-  const state = jwp.getState();
-  const pos = jwp.getPosition();
-  const dur = jwp.getDuration();
-
-  // Log every key to detect your remote codes
-  console.log("TV Key Pressed:", e.keyCode, e.key, e.code);
-
-  // Handle common smart TV media keys
-  switch(e.keyCode) {
-    case 415: // Play
-      if(state === "playing") jwp.pause();
-      else jwp.play();
-      showHUD();
-      updateHUD();
-      break;
-    case 413: // Stop
-      jwp.stop();
-      showHUD();
-      updateHUD();
-      break;
-    case 412: // Rewind 10s
-      jwp.seek(Math.max(0, pos-10));
-      showHUD();
-      break;
-    case 417: // Forward 10s
-      jwp.seek(Math.min(dur, pos+10));
-      showHUD();
-      break;
-    case 448: // Volume Down (optional)
-      break;
-    case 447: // Volume Up (optional)
-      break;
-    case 449: // Mute (optional)
-      break;
-    case 10135: // CC toggle (Samsung example)
-    case 46:    // Delete key as fallback
-      const ccState = jwp.getCurrentCaptions();
-      jwp.setCurrentCaptions(ccState === 0 ? 1 : 0);
-      showHUD();
-      updateHUD();
-      break;
-  }
-});
-
-// --- Update HUD every second ---
 setInterval(updateTimer, 1000);
 </script>
 </body>
