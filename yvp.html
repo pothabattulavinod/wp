@@ -1,150 +1,190 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<script src="https://ssl.p.jwpcdn.com/player/v/8.32.0/jwplayer.js"></script>
-<script>
-  jwplayer.key = 'cLGMn8T20tGvW+0eXPhq4NNmLB57TrscPjd1IyJF84o=';
-</script>
-<style>
-html, body {
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  background: #000;
-  font-family: sans-serif;
-  touch-action: none;
-  user-select: none;
-}
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <script src="https://ssl.p.jwpcdn.com/player/v/8.32.0/jwplayer.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <script>
+    jwplayer.key = 'cLGMn8T20tGvW+0eXPhq4NNmLB57TrscPjd1IyJF84o=';
+  </script>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      touch-action: none;
+      -webkit-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+      background-color: #000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
 
-#player {
-  width: 100%;
-  height: 100%;
-  outline: none;
-}
+    #player {
+      width: 80%;
+      height: 45%;
+      background-color: #000;
+      outline: none;
+    }
 
-#hud {
-  position: absolute;
-  bottom: 50px;
-  left: 50%;
-  transform: translateX(-50%);
-  color: #fff;
-  font-size: 26px;
-  pointer-events: none;
-  background: rgba(0,0,0,0.5);
-  padding: 8px 15px;
-  border-radius: 8px;
-  opacity: 0;
-  transition: opacity 0.3s;
-}
+    .tv-button {
+      margin: 15px;
+      padding: 15px 30px;
+      font-size: 1.2em;
+      background-color: #222;
+      color: #fff;
+      border: 2px solid #444;
+      border-radius: 8px;
+      cursor: pointer;
+      outline: none;
+    }
 
-#hud.visible { opacity: 1; }
+    .tv-button:focus,
+    #player:focus {
+      border-color: #ff6347;
+      box-shadow: 0 0 20px #ff6347;
+    }
 
-/* Focus style for TV navigation */
-.focusable:focus {
-  outline: 3px solid #00ffea;
-  border-radius: 6px;
-}
-</style>
+    .jw-title-primary {
+      font-weight: bold;
+      font-size: 1.5em;
+      color: #ff6347 !important;
+    }
+
+    .jwplayer .jw-progress {
+      background-color: #06b6d4 !important;
+    }
+
+    .jwplayer .jw-text-time {
+      color: #ff6347 !important;
+    }
+
+    .jwplayer .jw-button:hover {
+      background: #ff6347 !important;
+    }
+
+    .jw-rightclick .jw-reset {
+      display: none;
+    }
+  </style>
 </head>
 <body>
+  <!-- JWPlayer -->
+  <div id="player" tabindex="0"></div>
 
-<div id="player" tabindex="0" class="focusable"></div>
-<div id="hud" tabindex="0" class="focusable">0:00 / 0:00</div>
+  <!-- Custom TV buttons -->
+  <button class="tv-button" tabindex="0" id="rewindBtn">⏪ Rewind 10s</button>
+  <button class="tv-button" tabindex="0" id="forwardBtn">⏩ Forward 10s</button>
+  <button class="tv-button" tabindex="0" id="playPauseBtn">▶️ Play/Pause</button>
 
-<script>
-const jwp = jwplayer("player");
-const hud = document.getElementById("hud");
-const playbackKey = "jw-tv-playback-" + location.href;
-const savedPosition = localStorage.getItem(playbackKey);
-let hudTimeout;
+  <script>
+    // JWPlayer Setup
+    var jwp = jwplayer('player');
+    var pageUrl = window.location.href;
+    var playbackKey = `jwplayer-playback-position-${pageUrl}`;
+    var savedPosition = localStorage.getItem(playbackKey);
 
-// --- JWPlayer Setup ---
-jwp.setup({
-  file: "https://pothabattulavinod.github.io/pay/og.m3u8",
-  type: "hls",
-  width: "100%",
-  height: "100%",
-  controls: true,
-  autostart: true,
-  preload: "auto",
-  primary: "html5",
-  tracks: [{
-    file: "https://raw.githubusercontent.com/pothabattulavinod/wp/refs/heads/main/og.vtt",
-    label: "English",
-    kind: "captions",
-    "default": true
-  }]
-});
+    jwp.setup({
+      aspectratio: "16:9",
+      width: "100%",
+      height: "100%",
+      sources: [{
+        file: "https://pothabattulavinod.github.io/pay/og.m3u8",
+        type: "hls",
+        default: true
+      }],
+      primary: "html5",
+      preload: "auto",
+      hlshtml: true,
+      html5: {
+        hlsjsConfig: {
+          liveSyncDuration: 3,
+          maxBufferLength: 30
+        }
+      },
+      abr: { enabled: true },
+      cast: { enabled: true },
+      controls: true,
+      tracks: [{
+        file: "https://raw.githubusercontent.com/pothabattulavinod/wp/refs/heads/main/og.vtt",
+        label: "English",
+        kind: "captions",
+        "default": true,
+        language: "en"
+      }]
+    });
 
-// --- Focus player to receive media keys ---
-jwp.on('ready', () => {
-  const playerEl = document.getElementById('player');
-  playerEl.focus();
-  if(savedPosition) jwp.seek(parseFloat(savedPosition));
-  updateHUD();
-});
+    jwp.on('ready', function () {
+      if (savedPosition && !isNaN(savedPosition)) {
+        jwp.seek(parseFloat(savedPosition));
+      }
+    });
 
-// --- Save playback position ---
-jwp.on('time', e => {
-  localStorage.setItem(playbackKey, e.position);
-  updateHUD();
-});
+    jwp.on('time', function (event) {
+      localStorage.setItem(playbackKey, event.position);
+    });
 
-// --- Clear storage on complete ---
-jwp.on('complete', () => localStorage.removeItem(playbackKey));
+    jwp.on('complete', function () {
+      localStorage.removeItem(playbackKey);
+    });
 
-// --- Update HUD ---
-function updateHUD() {
-  const pos = Math.floor(jwp.getPosition());
-  const dur = Math.floor(jwp.getDuration());
-  const format = t => `${Math.floor(t/60)}:${String(t%60).padStart(2,'0')}`;
-  hud.textContent = `${format(pos)} / ${format(dur)}`;
-}
+    // TV Remote Navigation
+    const focusable = Array.from(document.querySelectorAll('[tabindex="0"]'));
+    let currentIndex = 0;
 
-// --- Show HUD temporarily ---
-function showHUD() {
-  hud.classList.add('visible');
-  clearTimeout(hudTimeout);
-  hudTimeout = setTimeout(() => hud.classList.remove('visible'), 3000);
-}
+    // Initial focus
+    focusable[currentIndex].focus();
 
-// --- TV remote navigation ---
-const focusableElements = Array.from(document.querySelectorAll('.focusable'));
-let currentFocus = 0;
-focusableElements[currentFocus].focus();
+    document.addEventListener('keydown', (e) => {
+      switch(e.key) {
+        case "ArrowUp":
+          currentIndex = (currentIndex - 1 + focusable.length) % focusable.length;
+          focusable[currentIndex].focus();
+          break;
+        case "ArrowDown":
+          currentIndex = (currentIndex + 1) % focusable.length;
+          focusable[currentIndex].focus();
+          break;
+        case "ArrowLeft":
+          if(focusable[currentIndex].id === 'player'){
+            jwp.seek(jwp.getPosition() - 10);
+          }
+          break;
+        case "ArrowRight":
+          if(focusable[currentIndex].id === 'player'){
+            jwp.seek(jwp.getPosition() + 10);
+          }
+          break;
+        case "Enter":
+        case "OK":
+          focusable[currentIndex].click();
+          break;
+      }
+    });
 
-window.addEventListener('keydown', e => {
-  // Prevent default scroll on arrows
-  if([37,38,39,40].includes(e.keyCode)){
-    e.preventDefault();
-    e.stopPropagation();
-    
-    // Left/Up = previous, Right/Down = next
-    if(e.keyCode === 37 || e.keyCode === 38){
-      currentFocus = (currentFocus - 1 + focusableElements.length) % focusableElements.length;
-    } else {
-      currentFocus = (currentFocus + 1) % focusableElements.length;
-    }
-    focusableElements[currentFocus].focus();
-  }
+    // Custom button actions
+    document.getElementById('rewindBtn').addEventListener('click', () => {
+      jwp.seek(jwp.getPosition() - 10);
+    });
 
-  // Enter/OK triggers click
-  if(e.keyCode === 13 || e.keyCode === 32){
-    const focused = document.activeElement;
-    if(focused) focused.click();
-  }
+    document.getElementById('forwardBtn').addEventListener('click', () => {
+      jwp.seek(jwp.getPosition() + 10);
+    });
 
-  // Show HUD on any remote interaction
-  showHUD();
-});
+    document.getElementById('playPauseBtn').addEventListener('click', () => {
+      if(jwp.getState() === "PLAYING") jwp.pause();
+      else jwp.play();
+    });
 
-// --- Update HUD every second ---
-setInterval(updateHUD, 1000);
-</script>
-
+    // HLS.js fallback check
+    if (typeof Hls !== "undefined") {
+      if (Hls.isSupported()) console.log("✅ hls.js is supported.");
+      else console.log("ℹ️ Native HLS fallback (Safari/TV).");
+    } else console.log("⚠️ hls.js not loaded, relying on JWPlayer native handling.");
+  </script>
 </body>
 </html>
