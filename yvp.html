@@ -25,40 +25,51 @@
     width: 100%;
     height: 100%;
     background-color: #000;
+    position: relative;
   }
 
-  /* JWPlayer Custom Styles */
-  .jw-title-primary {
+  /* Disable pointer interaction */
+  .jwplayer * {
+    pointer-events: none !important;
+  }
+
+  /* Custom TV control bar */
+  .tv-controls {
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 30px;
+    z-index: 10000;
+  }
+
+  .tv-button {
+    width: 80px;
+    height: 50px;
+    background: rgba(255,255,255,0.2);
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     font-weight: bold;
-    font-size: 1.5em;
-    color: #ff6347 !important;
+    border-radius: 5px;
+    cursor: pointer;
+    user-select: none;
   }
 
-  .jwplayer .jw-progress {
-    background-color: #06b6d4 !important;
-  }
-
-  .jwplayer .jw-text-time {
-    color: #ff6347 !important;
-  }
-
-  .jwplayer .jw-button:hover {
-    background: #ff6347 !important;
-  }
-
-  .jw-rightclick .jw-reset {
-    display: none;
-  }
-
-  /* Focus outline for TV remote navigation */
   .tv-focused {
-    outline: 3px solid #ff6347 !important;
+    outline: 3px solid #ff6347;
     outline-offset: 2px;
+  }
+
+  .volume-slider {
+    width: 100px;
   }
 </style>
 </head>
-
 <body>
+
 <div id="player"></div>
 
 <script>
@@ -67,7 +78,7 @@
   const playbackKey = `jwplayer-playback-position-${pageUrl}`;
   const savedPosition = localStorage.getItem(playbackKey);
 
-  // JWPlayer Setup
+  // --- JWPlayer Setup ---
   jwp.setup({
     aspectratio: "16:9",
     width: "100%",
@@ -80,19 +91,11 @@
     primary: "html5",
     preload: "auto",
     hlshtml: true,
-    html5: {
-      hlsjsConfig: {
-        liveSyncDuration: 3,
-        maxBufferLength: 30
-      }
-    },
+    html5: { hlsjsConfig: { liveSyncDuration: 3, maxBufferLength: 30 } },
     abr: { enabled: true },
     cast: { enabled: true },
-    controls: true,
+    controls: false, // hide default controls
     displayPlaybackLabel: false,
-    liveTimeout: 2,
-    dvrSeekLimit: 60,
-    dvrWindow: 3600,
     tracks: [{
       file: "https://raw.githubusercontent.com/pothabattulavinod/wp/refs/heads/main/og.vtt",
       label: "English",
@@ -100,82 +103,78 @@
       "default": true,
       language: "en"
     }],
-    fullscreen: { enabled: true },
+    fullscreen: { enabled: true }
   });
 
-  // Seek to saved position
+  // --- Custom TV Controls Overlay ---
+  const playerContainer = document.querySelector('#player');
+  const controlBar = document.createElement('div');
+  controlBar.className = 'tv-controls';
+  playerContainer.appendChild(controlBar);
+
+  const controlsConfig = [
+    { label: '<< 10s', action: () => jwp.seek(jwp.getPosition() - 10) },
+    { label: 'Play/Pause', action: () => {
+      jwp.getState() === "playing" ? jwp.pause() : jwp.play();
+    }},
+    { label: '>> 10s', action: () => jwp.seek(jwp.getPosition() + 10) },
+    { label: 'Vol -', action: () => jwp.setVolume(Math.max(0, jwp.getVolume() - 10)) },
+    { label: 'Vol +', action: () => jwp.setVolume(Math.min(100, jwp.getVolume() + 10)) },
+    { label: 'Fullscreen', action: () => jwp.setFullscreen(true) }
+  ];
+
+  const buttons = controlsConfig.map(cfg => {
+    const btn = document.createElement('div');
+    btn.className = 'tv-button';
+    btn.innerText = cfg.label;
+    btn.tabIndex = -1;
+    btn.onclick = cfg.action;
+    controlBar.appendChild(btn);
+    return btn;
+  });
+
+  // --- TV Remote Navigation ---
+  let focusedIndex = 0;
+  function updateFocus(index) {
+    buttons.forEach(b => b.classList.remove('tv-focused'));
+    focusedIndex = (index + buttons.length) % buttons.length;
+    buttons[focusedIndex].classList.add('tv-focused');
+  }
+
+  updateFocus(0);
+
+  document.addEventListener('keydown', e => {
+    switch(e.key) {
+      case 'ArrowRight': updateFocus(focusedIndex + 1); break;
+      case 'ArrowLeft': updateFocus(focusedIndex - 1); break;
+      case 'Enter':
+      case ' ':
+        buttons[focusedIndex].click();
+        break;
+    }
+    e.preventDefault();
+  });
+
+  // --- Playback position ---
   jwp.on('ready', () => {
-    if (savedPosition && !isNaN(savedPosition)) {
-      jwp.seek(parseFloat(savedPosition));
-    }
-
-    const playerContainer = document.querySelector('#player');
-
-    // --- Rewind/Forward Buttons ---
-    function addTVButton(iconClass, ariaLabel, seekSeconds) {
-      const button = document.createElement('div');
-      button.className = `jw-icon-rewind tv-button`;
-      button.style.transform = seekSeconds > 0 ? 'scaleX(-1)' : 'none';
-      button.setAttribute('aria-label', ariaLabel);
-      button.tabIndex = 0;
-      button.onclick = () => jwp.seek(jwp.getPosition() + seekSeconds);
-      button.onkeydown = e => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          jwp.seek(jwp.getPosition() + seekSeconds);
-        }
-      };
-      playerContainer.appendChild(button);
-      return button;
-    }
-
-    addTVButton('jw-icon-rewind', 'Rewind 10 seconds', -10);
-    addTVButton('jw-icon-rewind', 'Forward 10 seconds', 10);
-
-    // --- TV Focus/Keyboard Navigation ---
-    let focusable = Array.from(playerContainer.querySelectorAll('.tv-button, .jw-controlbar .jw-button'));
-    let focusIndex = 0;
-    focusable[focusIndex].classList.add('tv-focused');
-
-    function updateFocus(newIndex) {
-      focusable[focusIndex].classList.remove('tv-focused');
-      focusIndex = newIndex;
-      if (focusIndex < 0) focusIndex = focusable.length - 1;
-      if (focusIndex >= focusable.length) focusIndex = 0;
-      focusable[focusIndex].classList.add('tv-focused');
-    }
-
-    document.addEventListener('keydown', e => {
-      switch (e.key) {
-        case 'ArrowRight': updateFocus(focusIndex + 1); break;
-        case 'ArrowLeft': updateFocus(focusIndex - 1); break;
-        case 'Enter':
-        case ' ':
-          focusable[focusIndex].click();
-          break;
-      }
-    });
+    if (savedPosition && !isNaN(savedPosition)) jwp.seek(parseFloat(savedPosition));
   });
 
-  // Save playback position
   jwp.on('time', event => {
     localStorage.setItem(playbackKey, event.position);
   });
 
-  // Clear on complete
   jwp.on('complete', () => {
     localStorage.removeItem(playbackKey);
   });
 
-  // hls.js fallback
+  // --- hls.js fallback ---
   if (typeof Hls !== "undefined") {
     if (Hls.isSupported()) {
       console.log("✅ hls.js supported");
     } else {
       console.log("ℹ️ Native HLS fallback");
     }
-  } else {
-    console.log("⚠️ hls.js not loaded");
   }
 </script>
 </body>
