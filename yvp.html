@@ -9,13 +9,17 @@
 </script>
 <style>
   html, body {
-    margin: 0; padding: 0; background: #000;
-    width: 100%; height: 100%; overflow: hidden;
+    margin: 0;
+    padding: 0;
+    background: #000;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
     font-family: sans-serif;
   }
   #player { width: 100%; height: 100%; }
 
-  /* Optional HUD overlay (time only) */
+  /* Passive HUD overlay */
   #hud {
     position: absolute;
     bottom: 40px;
@@ -24,18 +28,31 @@
     color: #fff;
     font-size: 24px;
     pointer-events: none;
+    background: rgba(0,0,0,0.3);
+    padding: 5px 10px;
+    border-radius: 6px;
   }
 </style>
 </head>
 <body>
+
 <div id="player"></div>
-<div id="hud" id="timer">0:00 / 0:00</div>
+<div id="hud">0:00 / 0:00</div>
 
 <script>
 const jwp = jwplayer("player");
+const hud = document.getElementById("hud");
 const playbackKey = "jw-tv-playback-" + location.href;
 const savedPosition = localStorage.getItem(playbackKey);
-const hud = document.getElementById('hud');
+
+// --- Prevent browser from hijacking bubble keys ---
+window.addEventListener('keydown', function(e) {
+  const keysToBlock = [37,38,39,40,13,32]; // Left, Up, Right, Down, Enter, Space
+  if(keysToBlock.includes(e.keyCode)){
+    e.preventDefault();
+    e.stopPropagation();
+  }
+}, { passive: false });
 
 // --- JWPlayer Setup ---
 jwp.setup({
@@ -43,7 +60,7 @@ jwp.setup({
   type: "hls",
   width: "100%",
   height: "100%",
-  controls: true,   // Enable full JWPlayer controls
+  controls: true,      // Full native JWPlayer controls
   autostart: true,
   preload: "auto",
   primary: "html5",
@@ -55,30 +72,32 @@ jwp.setup({
   }]
 });
 
-// Resume playback
+// Resume playback from last position
 jwp.on("ready", () => {
-  if (savedPosition) jwp.seek(parseFloat(savedPosition));
-  updateTimer();
+  if(savedPosition) jwp.seek(parseFloat(savedPosition));
+  updateHUD();
 });
 
 // Save playback position
 jwp.on("time", e => {
   localStorage.setItem(playbackKey, e.position);
-  updateTimer();
+  updateHUD();
 });
 
-// Clear position on complete
+// Clear storage on complete
 jwp.on("complete", () => localStorage.removeItem(playbackKey));
 
-// --- Optional HUD Update ---
-function updateTimer() {
+// --- Passive HUD Update ---
+function updateHUD() {
   const pos = Math.floor(jwp.getPosition());
   const dur = Math.floor(jwp.getDuration());
   const format = t => `${Math.floor(t/60)}:${String(t%60).padStart(2,'0')}`;
   hud.textContent = `${format(pos)} / ${format(dur)}`;
 }
 
-setInterval(updateTimer, 1000);
+// Update HUD every second
+setInterval(updateHUD, 1000);
 </script>
+
 </body>
 </html>
