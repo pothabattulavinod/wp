@@ -14,10 +14,10 @@ html, body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  touch-action: none;
-  user-select: none;
   background: #000;
   font-family: sans-serif;
+  touch-action: none;
+  user-select: none;
 }
 
 #player {
@@ -40,13 +40,20 @@ html, body {
   opacity: 0;
   transition: opacity 0.3s;
 }
+
 #hud.visible { opacity: 1; }
+
+/* Focus style for TV navigation */
+.focusable:focus {
+  outline: 3px solid #00ffea;
+  border-radius: 6px;
+}
 </style>
 </head>
 <body>
 
-<div id="player" tabindex="0"></div>
-<div id="hud">0:00 / 0:00</div>
+<div id="player" tabindex="0" class="focusable"></div>
+<div id="hud" tabindex="0" class="focusable">0:00 / 0:00</div>
 
 <script>
 const jwp = jwplayer("player");
@@ -98,21 +105,39 @@ function updateHUD() {
   hud.textContent = `${format(pos)} / ${format(dur)}`;
 }
 
-// --- Show HUD temporarily when remote is used ---
+// --- Show HUD temporarily ---
 function showHUD() {
   hud.classList.add('visible');
   clearTimeout(hudTimeout);
   hudTimeout = setTimeout(() => hud.classList.remove('visible'), 3000);
 }
 
-// --- Listen to any key pressed on remote ---
+// --- TV remote navigation ---
+const focusableElements = Array.from(document.querySelectorAll('.focusable'));
+let currentFocus = 0;
+focusableElements[currentFocus].focus();
+
 window.addEventListener('keydown', e => {
-  // Prevent page scroll for arrow/Enter keys
-  const keysToBlock = [37,38,39,40,13,32];
-  if(keysToBlock.includes(e.keyCode)){
+  // Prevent default scroll on arrows
+  if([37,38,39,40].includes(e.keyCode)){
     e.preventDefault();
     e.stopPropagation();
+    
+    // Left/Up = previous, Right/Down = next
+    if(e.keyCode === 37 || e.keyCode === 38){
+      currentFocus = (currentFocus - 1 + focusableElements.length) % focusableElements.length;
+    } else {
+      currentFocus = (currentFocus + 1) % focusableElements.length;
+    }
+    focusableElements[currentFocus].focus();
   }
+
+  // Enter/OK triggers click
+  if(e.keyCode === 13 || e.keyCode === 32){
+    const focused = document.activeElement;
+    if(focused) focused.click();
+  }
+
   // Show HUD on any remote interaction
   showHUD();
 });
