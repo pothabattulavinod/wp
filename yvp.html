@@ -13,10 +13,8 @@ html, body {
   padding: 0;
   width: 100%;
   height: 100%;
-  overflow: hidden;           /* Stop page scroll */
-  touch-action: none;         /* Prevent pointer scrolling */
-  -webkit-user-select: none;
-  -ms-user-select: none;
+  overflow: hidden;
+  touch-action: none;
   user-select: none;
   background: #000;
   font-family: sans-serif;
@@ -25,21 +23,24 @@ html, body {
 #player {
   width: 100%;
   height: 100%;
-  outline: none;              /* Remove focus outline */
+  outline: none;
 }
 
 #hud {
   position: absolute;
-  bottom: 40px;
+  bottom: 50px;
   left: 50%;
   transform: translateX(-50%);
   color: #fff;
-  font-size: 24px;
+  font-size: 26px;
   pointer-events: none;
-  background: rgba(0,0,0,0.3);
-  padding: 5px 10px;
-  border-radius: 6px;
+  background: rgba(0,0,0,0.5);
+  padding: 8px 15px;
+  border-radius: 8px;
+  opacity: 0;
+  transition: opacity 0.3s;
 }
+#hud.visible { opacity: 1; }
 </style>
 </head>
 <body>
@@ -52,15 +53,7 @@ const jwp = jwplayer("player");
 const hud = document.getElementById("hud");
 const playbackKey = "jw-tv-playback-" + location.href;
 const savedPosition = localStorage.getItem(playbackKey);
-
-// --- Prevent browser bubble/arrow scroll ---
-window.addEventListener('keydown', function(e){
-  const keysToBlock = [37,38,39,40,13,32]; // Left, Up, Right, Down, Enter, Space
-  if(keysToBlock.includes(e.keyCode)){
-    e.preventDefault();        // Stop browser scrolling/focus
-    e.stopPropagation();
-  }
-}, { passive: false });
+let hudTimeout;
 
 // --- JWPlayer Setup ---
 jwp.setup({
@@ -68,7 +61,7 @@ jwp.setup({
   type: "hls",
   width: "100%",
   height: "100%",
-  controls: true,             // Native JWPlayer controls
+  controls: true,
   autostart: true,
   preload: "auto",
   primary: "html5",
@@ -80,10 +73,10 @@ jwp.setup({
   }]
 });
 
-// --- Focus player for remote input ---
+// --- Focus player to receive media keys ---
 jwp.on('ready', () => {
   const playerEl = document.getElementById('player');
-  playerEl.focus();            // Smart TV sends keys to focused element
+  playerEl.focus();
   if(savedPosition) jwp.seek(parseFloat(savedPosition));
   updateHUD();
 });
@@ -97,13 +90,34 @@ jwp.on('time', e => {
 // --- Clear storage on complete ---
 jwp.on('complete', () => localStorage.removeItem(playbackKey));
 
-// --- HUD update ---
-function updateHUD(){
+// --- Update HUD ---
+function updateHUD() {
   const pos = Math.floor(jwp.getPosition());
   const dur = Math.floor(jwp.getDuration());
   const format = t => `${Math.floor(t/60)}:${String(t%60).padStart(2,'0')}`;
   hud.textContent = `${format(pos)} / ${format(dur)}`;
 }
+
+// --- Show HUD temporarily when remote is used ---
+function showHUD() {
+  hud.classList.add('visible');
+  clearTimeout(hudTimeout);
+  hudTimeout = setTimeout(() => hud.classList.remove('visible'), 3000);
+}
+
+// --- Listen to any key pressed on remote ---
+window.addEventListener('keydown', e => {
+  // Prevent page scroll for arrow/Enter keys
+  const keysToBlock = [37,38,39,40,13,32];
+  if(keysToBlock.includes(e.keyCode)){
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  // Show HUD on any remote interaction
+  showHUD();
+});
+
+// --- Update HUD every second ---
 setInterval(updateHUD, 1000);
 </script>
 
