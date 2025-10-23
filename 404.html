@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>404 — Page Not Found | YOTT</title>
+<style>
+:root {
+  --bg: #0b0f1a;
+  --accent: #06b6d4;
+  --accent-hover: #4f46e5;
+  --radius: 8px;
+  --text-light: #e6eef6;
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Arial;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { 
+  background: var(--bg); 
+  color: var(--text-light); 
+  display:flex; 
+  flex-direction:column; 
+  align-items:center; 
+  justify-content:center; 
+  height:100vh; 
+  text-align:center; 
+  padding:20px; 
+}
+a { text-decoration: none; color: inherit; }
+
+h1 { 
+  font-size:clamp(40px, 8vw, 80px); 
+  margin-bottom:20px; 
+  background: linear-gradient(135deg,#06b6d4,#4f46e5); 
+  -webkit-background-clip: text; 
+  -webkit-text-fill-color: transparent; 
+}
+p { 
+  font-size:clamp(16px, 2vw, 20px); 
+  color:#9aa4b2; 
+  margin-bottom:30px; 
+}
+.button { 
+  padding:12px 25px; 
+  font-size:clamp(14px, 2vw, 18px); 
+  background: var(--accent); 
+  color: #fff; 
+  border: none; 
+  border-radius: var(--radius); 
+  cursor: pointer; 
+  transition: 0.2s; 
+  text-decoration:none; 
+}
+.button:hover { background: var(--accent-hover); }
+
+@media(max-width:480px){
+  h1 { font-size: clamp(30px, 10vw, 60px); }
+  p { font-size: clamp(14px, 3vw, 18px); }
+}
+</style>
+</head>
+<body>
+
+<main>
+  <h1>404</h1>
+  <p>Oops! The page you're looking for doesn't exist.<br>It might have been moved or deleted.</p>
+  <a href="../index.html" class="button">Go Home</a>
+</main>
+
+</body>
+</html>
