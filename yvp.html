@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://ssl.p.jwpcdn.com/player/v/8.32.0/jwplayer.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
@@ -22,6 +22,12 @@
     #player {
       width: 100%;
       height: 100%;
+    }
+
+    /* Force JWPlayer control bar always visible */
+    .jw-controls {
+      opacity: 1 !important;
+      pointer-events: auto !important;
     }
   </style>
 </head>
@@ -61,65 +67,58 @@
       localStorage.setItem(playbackKey, e.position);
     });
 
-    // --- Clear position on complete ---
+    // --- Clear saved position on complete ---
     jwp.on("complete", () => {
       localStorage.removeItem(playbackKey);
     });
 
-    // --- TV Remote Key Handling ---
+    // --- TV Remote Direct Control ---
     document.addEventListener("keydown", (e) => {
       const state = jwp.getState();
-      const position = jwp.getPosition();
-      const duration = jwp.getDuration();
-      const volume = jwp.getVolume();
+      const pos = jwp.getPosition();
+      const dur = jwp.getDuration();
+      const vol = jwp.getVolume();
+
+      // List of TV remote keys to intercept
+      const remoteKeys = [8, 13, 27, 37, 38, 39, 40, 173, 415, 417, 447, 448, 449, 461, 179];
+
+      if (remoteKeys.includes(e.keyCode)) {
+        e.preventDefault();  // Stop TV OSD / bubble
+        e.stopPropagation();
+      }
 
       switch (e.keyCode) {
-        // Enter / OK
-        case 13: case 415: case 179: // OK / Play
-          if (state === "playing") jwp.pause();
-          else jwp.play();
+        case 13: case 415: case 179: // Enter / Play
+          state === "playing" ? jwp.pause() : jwp.play();
           break;
 
-        // Back / Return / Exit
-        case 8: case 461: case 27:
-          if (document.fullscreenElement) document.exitFullscreen();
-          else history.back();
+        case 8: case 461: case 27: // Back / Return / Exit
+          document.fullscreenElement ? document.exitFullscreen() : history.back();
           break;
 
-        // Left / Rewind
-        case 37: case 412: // Left Arrow / Rewind
-          jwp.seek(Math.max(0, position - 10));
+        case 37: case 412: // Rewind 10s
+          jwp.seek(Math.max(0, pos - 10));
           break;
 
-        // Right / Forward
-        case 39: case 417: // Right Arrow / Forward
-          jwp.seek(Math.min(duration, position + 10));
+        case 39: case 417: // Forward 10s
+          jwp.seek(Math.min(dur, pos + 10));
           break;
 
-        // Up / Volume Up
-        case 38: case 447: // Up Arrow / Volume Up
-          jwp.setVolume(Math.min(100, volume + 10));
+        case 38: case 447: // Volume Up
+          jwp.setVolume(Math.min(100, vol + 10));
           break;
 
-        // Down / Volume Down
-        case 40: case 448: // Down Arrow / Volume Down
-          jwp.setVolume(Math.max(0, volume - 10));
+        case 40: case 448: // Volume Down
+          jwp.setVolume(Math.max(0, vol - 10));
           break;
 
-        // Mute
-        case 173: case 449: // Mute keys
+        case 173: case 449: // Mute
           jwp.setMute(!jwp.getMute());
-          break;
-
-        // Play / Pause
-        case 415: case 179:
-          if (state === "playing") jwp.pause();
-          else jwp.play();
           break;
       }
     });
 
-    // --- HLS Fallback ---
+    // --- HLS fallback ---
     if (typeof Hls !== "undefined" && Hls.isSupported()) {
       console.log("✅ HLS.js active");
     } else {
