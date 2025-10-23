@@ -1,129 +1,161 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script src="https://ssl.p.jwpcdn.com/player/v/8.32.0/jwplayer.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-  <script>
-    jwplayer.key = 'cLGMn8T20tGvW+0eXPhq4NNmLB57TrscPjd1IyJF84o=';
-  </script>
-  <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      background: #000;
-      height: 100%;
-      width: 100%;
-      overflow: hidden;
-      font-family: sans-serif;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://ssl.p.jwpcdn.com/player/v/8.32.0/jwplayer.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<script>
+  jwplayer.key = 'cLGMn8T20tGvW+0eXPhq4NNmLB57TrscPjd1IyJF84o=';
+</script>
+<style>
+  html, body {
+    margin: 0; padding: 0; background: #000;
+    width: 100%; height: 100%; overflow: hidden;
+    font-family: sans-serif;
+  }
+  #player { width: 100%; height: 100%; }
 
-    #player {
-      width: 100%;
-      height: 100%;
-    }
+  /* HUD overlay */
+  #hud {
+    position: absolute;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 50px;
+    color: #fff;
+    font-size: 28px;
+    align-items: center;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+  }
+  #hud.visible { opacity: 1; }
 
-    /* Force JWPlayer control bar always visible */
-    .jw-controls {
-      opacity: 1 !important;
-      pointer-events: auto !important;
-    }
-  </style>
+  #hud span { background: rgba(0,0,0,0.4); padding: 10px 15px; border-radius: 10px; }
+</style>
 </head>
 <body>
-  <div id="player"></div>
+<div id="player"></div>
+<div id="hud">
+  <span id="playPause">▶️</span>
+  <span id="rewind">⏪ 10s</span>
+  <span id="forward">⏩ 10s</span>
+  <span id="cc">💬 ON</span>
+  <span id="timer">0:00 / 0:00</span>
+</div>
 
-  <script>
-    const jwp = jwplayer("player");
-    const playbackKey = "jw-tv-playback-" + location.href;
-    const savedPosition = localStorage.getItem(playbackKey);
+<script>
+const jwp = jwplayer("player");
+const playbackKey = "jw-tv-playback-" + location.href;
+const savedPosition = localStorage.getItem(playbackKey);
 
-    // --- JWPlayer Setup ---
-    jwp.setup({
-      file: "https://pothabattulavinod.github.io/pay/og.m3u8",
-      type: "hls",
-      width: "100%",
-      height: "100%",
-      controls: true,
-      primary: "html5",
-      autostart: true,
-      preload: "auto",
-      tracks: [{
-        file: "https://raw.githubusercontent.com/pothabattulavinod/wp/refs/heads/main/og.vtt",
-        label: "English",
-        kind: "captions",
-        "default": true
-      }]
-    });
+const hud = document.getElementById('hud');
+const playPauseEl = document.getElementById('playPause');
+const rewindEl = document.getElementById('rewind');
+const forwardEl = document.getElementById('forward');
+const ccEl = document.getElementById('cc');
+const timerEl = document.getElementById('timer');
+let hudTimeout;
 
-    // --- Resume playback ---
-    jwp.on("ready", () => {
-      if (savedPosition) jwp.seek(parseFloat(savedPosition));
-    });
+// --- JWPlayer Setup ---
+jwp.setup({
+  file: "https://pothabattulavinod.github.io/pay/og.m3u8",
+  type: "hls",
+  width: "100%",
+  height: "100%",
+  controls: true,
+  primary: "html5",
+  autostart: true,
+  preload: "auto",
+  tracks: [{
+    file: "https://raw.githubusercontent.com/pothabattulavinod/wp/refs/heads/main/og.vtt",
+    label: "English",
+    kind: "captions",
+    "default": true
+  }]
+});
 
-    // --- Save playback position ---
-    jwp.on("time", e => {
-      localStorage.setItem(playbackKey, e.position);
-    });
+// Resume playback
+jwp.on("ready", () => {
+  if (savedPosition) jwp.seek(parseFloat(savedPosition));
+  updateTimer();
+});
 
-    // --- Clear saved position on complete ---
-    jwp.on("complete", () => {
-      localStorage.removeItem(playbackKey);
-    });
+// Save playback position
+jwp.on("time", e => {
+  localStorage.setItem(playbackKey, e.position);
+  updateTimer();
+});
 
-    // --- TV Remote Direct Control ---
-    document.addEventListener("keydown", (e) => {
-      const state = jwp.getState();
-      const pos = jwp.getPosition();
-      const dur = jwp.getDuration();
-      const vol = jwp.getVolume();
+// Clear position on complete
+jwp.on("complete", () => localStorage.removeItem(playbackKey));
 
-      // List of TV remote keys to intercept
-      const remoteKeys = [8, 13, 27, 37, 38, 39, 40, 173, 415, 417, 447, 448, 449, 461, 179];
+// --- HUD Functions ---
+function showHUD() {
+  hud.classList.add('visible');
+  clearTimeout(hudTimeout);
+  hudTimeout = setTimeout(() => hud.classList.remove('visible'), 3000);
+}
 
-      if (remoteKeys.includes(e.keyCode)) {
-        e.preventDefault();  // Stop TV OSD / bubble
-        e.stopPropagation();
-      }
+function updateHUD() {
+  playPauseEl.textContent = jwp.getState() === "playing" ? "▶️" : "⏸️";
+  const ccIndex = jwp.getCurrentCaptions();
+  ccEl.textContent = ccIndex === 0 ? "💬 OFF" : "💬 ON";
+}
 
-      switch (e.keyCode) {
-        case 13: case 415: case 179: // Enter / Play
-          state === "playing" ? jwp.pause() : jwp.play();
-          break;
+function updateTimer() {
+  const pos = Math.floor(jwp.getPosition());
+  const dur = Math.floor(jwp.getDuration());
+  const format = t => `${Math.floor(t/60)}:${String(t%60).padStart(2,'0')}`;
+  timerEl.textContent = `${format(pos)} / ${format(dur)}`;
+}
 
-        case 8: case 461: case 27: // Back / Return / Exit
-          document.fullscreenElement ? document.exitFullscreen() : history.back();
-          break;
+// --- TV Remote Controls ---
+document.addEventListener("keydown", (e) => {
+  const state = jwp.getState();
+  const pos = jwp.getPosition();
+  const dur = jwp.getDuration();
 
-        case 37: case 412: // Rewind 10s
-          jwp.seek(Math.max(0, pos - 10));
-          break;
+  // Only keys JS can reliably intercept on TV
+  const tvKeys = [13, 37, 39, 38, 40];
 
-        case 39: case 417: // Forward 10s
-          jwp.seek(Math.min(dur, pos + 10));
-          break;
+  if (!tvKeys.includes(e.keyCode)) return;
+  e.preventDefault(); e.stopPropagation();
 
-        case 38: case 447: // Volume Up
-          jwp.setVolume(Math.min(100, vol + 10));
-          break;
+  switch(e.keyCode){
+    case 13: // Enter → play/pause
+      if(state === "playing") jwp.pause();
+      else jwp.play();
+      showHUD();
+      updateHUD();
+      break;
+    case 37: // Left → rewind 10s
+      jwp.seek(Math.max(0,pos-10));
+      showHUD();
+      break;
+    case 39: // Right → forward 10s
+      jwp.seek(Math.min(dur,pos+10));
+      showHUD();
+      break;
+    case 38: // Up → toggle CC on/off
+      const currentCC = jwp.getCurrentCaptions();
+      jwp.setCurrentCaptions(currentCC === 0 ? 1 : 0);
+      showHUD();
+      updateHUD();
+      break;
+    case 40: // Down → toggle CC again (or could do volume if possible)
+      const ccState = jwp.getCurrentCaptions();
+      jwp.setCurrentCaptions(ccState === 0 ? 1 : 0);
+      showHUD();
+      updateHUD();
+      break;
+  }
+});
 
-        case 40: case 448: // Volume Down
-          jwp.setVolume(Math.max(0, vol - 10));
-          break;
-
-        case 173: case 449: // Mute
-          jwp.setMute(!jwp.getMute());
-          break;
-      }
-    });
-
-    // --- HLS fallback ---
-    if (typeof Hls !== "undefined" && Hls.isSupported()) {
-      console.log("✅ HLS.js active");
-    } else {
-      console.log("ℹ️ Using native HLS");
-    }
-  </script>
+// --- Update HUD every second ---
+setInterval(updateTimer,1000);
+</script>
 </body>
 </html>
