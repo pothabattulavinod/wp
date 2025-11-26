@@ -1,0 +1,211 @@
+<section id="qodegen-tv" style="background-color: #000; color: #fff; font-family: Arial, sans-serif; text-align: center; padding: 20px;">
+    <h2>YOTT TV</h2>
+
+    <style>
+        /* Normal mode */
+        #video-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            max-width: 900px;
+            aspect-ratio: 16 / 9;
+            margin: 0 auto;
+            position: relative;
+            background-color: black;
+            border: 3px solid #444;
+            border-radius: 8px;
+        }
+
+        #video-container video {
+            width: 100%;
+            height: auto;
+            background-color: #000;
+            pointer-events: none;
+        }
+
+        /* REMOVE BORDER & RADIUS IN FULLSCREEN */
+        #video-container.fullscreen {
+            border: none !important;
+            border-radius: 0 !important;
+            margin: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+        }
+
+        #loading-indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #fff;
+            font-size: 16px;
+            display: none;
+        }
+
+        #watermark {
+            position: absolute;
+            left: 5%;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 12px;
+            font-weight: bold;
+            color: rgba(255, 255, 255, 0.5);
+            padding: 10px;
+            display: none;
+            z-index: 10;
+        }
+    </style>
+
+    <div id="video-container">
+        <video id="video" autoplay playsinline></video>
+        <div id="loading-indicator">Loading...</div>
+        <div id="watermark">YOTT</div>
+    </div>
+
+    <div id="info-bar" style="font-size: 16px; font-weight: bold; background-color: #222; padding: 10px; margin: 20px auto; width: 80%; border-radius: 5px;">
+        Now Playing: -
+    </div>
+
+    <div id="button-container" style="margin-top: 20px;">
+        <button id="fullscreen-btn" style="background-color: #444; color: white; border: none; padding: 10px 20px; margin: 10px 5px; cursor: pointer; border-radius: 5px;">Go Fullscreen</button>
+        <button id="refresh-btn" style="background-color: #444; color: white; border: none; padding: 10px 20px; margin: 10px 5px; cursor: pointer; border-radius: 5px;">Refresh</button>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+    <script>
+        const video = document.getElementById('video');
+        const fullscreenBtn = document.getElementById('fullscreen-btn');
+        const refreshBtn = document.getElementById('refresh-btn');
+        const infoBar = document.getElementById('info-bar');
+        const videoContainer = document.getElementById('video-container');
+        const watermark = document.getElementById('watermark');
+        const loadingIndicator = document.getElementById('loading-indicator');
+
+        let hls;
+        let currentStreamIndex = 0;
+
+        const streams = [
+            { url: 'https://example.com/dasara.m3u8', title: 'DASARA', startTime: new Date().setHours(8, 0, 0, 0), endTime: new Date().setHours(11, 29, 0, 0) },
+            { url: 'https://example.com/lucky_bhaskar.m3u8', title: 'LUCKY BHASKAR', startTime: new Date().setHours(13, 25, 0, 0), endTime: new Date().setHours(16, 0, 0, 0) },
+            { url: 'https://example.com/devara_part1.m3u8', title: 'DEVARA: PART 1', startTime: new Date().setHours(16, 0, 0, 0), endTime: new Date().setHours(17, 0, 0, 0) },
+            { url: 'https://pothabattulavinod.github.io/pay/hi.m3u8', title: '5PM to 8PM Show', startTime: new Date().setHours(19, 50, 0, 0), endTime: new Date().setHours(20, 0, 0, 0) },
+            { url: 'https://pothabattulavinod.github.io/pay/hi.m3u8', title: '8PM to 11PM Show', startTime: new Date().setHours(22, 0, 0, 0), endTime: new Date().setHours(23, 59, 0, 0) }
+        ];
+
+        function showLoading() { loadingIndicator.style.display = 'block'; }
+        function hideLoading() { loadingIndicator.style.display = 'none'; }
+
+        function loadStream(offsetSeconds = 0) {
+            const stream = streams[currentStreamIndex];
+            showLoading();
+
+            if (Hls.isSupported()) {
+                if (hls) hls.destroy();
+                hls = new Hls({ liveSyncDurationCount: 3, enableWorker: true, debug: false });
+                hls.loadSource(stream.url);
+                hls.attachMedia(video);
+
+                hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                    video.currentTime = offsetSeconds;
+                    video.play().catch(console.warn);
+                    infoBar.textContent = `Now Playing: ${stream.title}`;
+                    hideLoading();
+                });
+
+                hls.on(Hls.Events.ERROR, (event, data) => {
+                    console.error('HLS error:', data);
+                    if (data.fatal) {
+                        switch (data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR: hls.startLoad(); break;
+                            case Hls.ErrorTypes.MEDIA_ERROR: hls.recoverMediaError(); break;
+                            default: hls.destroy(); hideLoading(); break;
+                        }
+                    }
+                });
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = stream.url;
+                video.currentTime = offsetSeconds;
+                video.load();
+                video.play().catch(console.warn);
+                infoBar.textContent = `Now Playing: ${stream.title}`;
+                hideLoading();
+            } else {
+                alert('Your browser does not support HLS playback.');
+                hideLoading();
+            }
+        }
+
+        function syncWithTime() {
+            const now = new Date();
+            let stream = streams[currentStreamIndex];
+
+            if (now >= stream.endTime) {
+                playNextStream();
+            } else if (now >= stream.startTime) {
+                const offset = Math.max((now - stream.startTime) / 1000, 0);
+                loadStream(offset);
+            } else {
+                setTimeout(syncWithTime, stream.startTime - now);
+            }
+        }
+
+        function playNextStream() {
+            if (currentStreamIndex < streams.length - 1) {
+                currentStreamIndex++;
+                syncWithTime();
+            } else {
+                infoBar.textContent = 'No more streams available.';
+            }
+        }
+
+        function updateInfoBarRandomly() {
+            const currentStream = streams[currentStreamIndex];
+            const nextStream = streams[currentStreamIndex + 1] || streams[0];
+
+            const currentText = `Now Playing: ${currentStream?.title || 'No Current Movie'}`;
+            const nextText = `Next: ${nextStream?.title || 'No Upcoming Movies'} at ${
+                nextStream ? new Date(nextStream.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }) : '-'
+            }`;
+
+            infoBar.textContent = Math.random() > 0.5 ? currentText : nextText;
+            setTimeout(updateInfoBarRandomly, 3000);
+        }
+
+        function enableFullscreen() {
+            videoContainer.requestFullscreen().then(() => {
+                if (screen.orientation && screen.orientation.lock) {
+                    screen.orientation.lock('landscape').catch(console.warn);
+                }
+                videoContainer.classList.add('fullscreen');
+                watermark.style.display = 'block';
+                fullscreenBtn.style.display = 'none';
+            });
+        }
+
+        fullscreenBtn.addEventListener('click', enableFullscreen);
+        refreshBtn.addEventListener('click', syncWithTime);
+
+        document.addEventListener('fullscreenchange', () => {
+            if (!document.fullscreenElement) {
+                videoContainer.classList.remove('fullscreen');
+                watermark.style.display = 'none';
+                fullscreenBtn.style.display = 'inline-block';
+            }
+        });
+
+        window.addEventListener('load', () => {
+            video.muted = false;
+            syncWithTime();
+            updateInfoBarRandomly();
+
+            setInterval(() => {
+                const now = new Date();
+                if (streams[currentStreamIndex].endTime <= now) {
+                    playNextStream();
+                }
+            }, 5000);
+        });
+    </script>
+</section>
