@@ -14,33 +14,33 @@
       margin: 0;
       overflow: hidden;
     }
-
+    
     #player {
       width: 100%;
       height: 100%;
       overflow: hidden;
       background-color: #000;
     }
-
+    
     /* Custom player styles */
     .jw-title-primary {
       font-weight: bold;
       font-size: 1.5em;
       color: #ff6347 !important;
     }
-
+    
     .jwplayer .jw-progress {
-      background-color: #06b6d4 !important;
+      background-color:  #06b6d4 !important;
     }
-
+    
     .jwplayer .jw-text-time {
       color: #ff6347 !important;
     }
-
+    
     .jwplayer .jw-button:hover {
       background: #ff6347 !important;
     }
-
+    
     .jw-rightclick .jw-reset {
       display: none;
     }
@@ -48,16 +48,12 @@
 </head>
 <body>
   <div id="player"></div>
-
+  
   <script>
-    // 🔐 Secret token — must match the SECRET_TOKEN in your worker.js
-    var SECRET_TOKEN = "yott_2024_x7k9m2p4q8n1v5b3";
-    var WORKER_BASE = "https://super-surf-2f1c.vinodyadavpothabattula666.workers.dev";
-
     var jwp = jwplayer('player');
     var pageUrl = window.location.href;
-    var playbackKey = 'jwplayer-playback-position-' + pageUrl;
-
+    var playbackKey = `jwplayer-playback-position-${pageUrl}`;
+    
     // Load saved position from localStorage
     var savedPosition = localStorage.getItem(playbackKey);
 
@@ -66,24 +62,25 @@
       width: "100%",
       height: "100%",
       sources: [{
-        file: WORKER_BASE + "/rrr?token=" + SECRET_TOKEN,
+        file: "https://dry-snowflake-a13b.vinodyadavpothabattula666.workers.dev/blast", // ✅ Master Playlist
         type: "hls",
         default: true
       }],
       image: "",
-      primary: "html5",
+      primary: "html5",   // ✅ Ensures iPhone uses native playback
       preload: "auto",
       title: "",
       bufferLength: 5,
-      hlshtml: true,
+      hlshtml: true,      // ✅ Enable HTML5 HLS fallback
       html5: {
         hlsjsConfig: {
+          // Optional HLS.js tuning
           liveSyncDuration: 3,
           maxBufferLength: 30
         }
       },
       abr: {
-        enabled: true
+        enabled: true     // ✅ Allow adaptive bitrate switching
       },
       cast: {
         enabled: true
@@ -111,54 +108,51 @@
         language: "en"
       }]
     });
-
+    
     jwp.on('ready', function () {
       // Seek to the saved position if available
       if (savedPosition && !isNaN(savedPosition)) {
         jwp.seek(parseFloat(savedPosition));
       }
-
+    
       const playerContainer = document.querySelector('#player');
-
-      // Display icon — clone rewind to make a forward button
+    
+      // Display icon
       const rewindContainer = playerContainer.querySelector('.jw-display-icon-rewind');
-      if (rewindContainer) {
-        const forwardContainer = rewindContainer.cloneNode(true);
-        const forwardDisplayButton = forwardContainer.querySelector('.jw-icon-rewind');
-        forwardDisplayButton.style.transform = "scaleX(-1)";
-        forwardDisplayButton.ariaLabel = "Forward 10 Seconds";
-
-        const nextContainer = playerContainer.querySelector('.jw-display-icon-next');
-        nextContainer.parentNode.insertBefore(forwardContainer, nextContainer);
-
-        // Control bar icon
-        playerContainer.querySelector('.jw-display-icon-next').style.display = 'none';
-        const buttonContainer = playerContainer.querySelector('.jw-button-container');
-        const rewindControlBarButton = buttonContainer.querySelector(".jw-icon-rewind");
-        const forwardControlBarButton = rewindControlBarButton.cloneNode(true);
-        forwardControlBarButton.style.transform = "scaleX(-1)";
-        forwardControlBarButton.ariaLabel = "Forward 10 Seconds";
-        rewindControlBarButton.parentNode.insertBefore(forwardControlBarButton, rewindControlBarButton.nextElementSibling);
-
-        // Add onclick handlers
-        [forwardDisplayButton, forwardControlBarButton].forEach(function(button) {
-          button.onclick = function() {
-            jwp.seek(jwp.getPosition() + 10);
-          };
-        });
-      }
+      const forwardContainer = rewindContainer.cloneNode(true);
+      const forwardDisplayButton = forwardContainer.querySelector('.jw-icon-rewind');
+      forwardDisplayButton.style.transform = "scaleX(-1)";
+      forwardDisplayButton.ariaLabel = "Forward 10 Seconds";
+      const nextContainer = playerContainer.querySelector('.jw-display-icon-next');
+      nextContainer.parentNode.insertBefore(forwardContainer, nextContainer);
+    
+      // Control bar icon
+      playerContainer.querySelector('.jw-display-icon-next').style.display = 'none'; // Hide next button
+      const buttonContainer = playerContainer.querySelector('.jw-button-container');
+      const rewindControlBarButton = buttonContainer.querySelector(".jw-icon-rewind");
+      const forwardControlBarButton = rewindControlBarButton.cloneNode(true);
+      forwardControlBarButton.style.transform = "scaleX(-1)";
+      forwardControlBarButton.ariaLabel = "Forward 10 Seconds";
+      rewindControlBarButton.parentNode.insertBefore(forwardControlBarButton, rewindControlBarButton.nextElementSibling);
+    
+      // Add onclick handlers
+      [forwardDisplayButton, forwardControlBarButton].forEach(button => {
+        button.onclick = () => {
+          jwp.seek(jwp.getPosition() + 10);
+        };
+      });
     });
-
+    
     // Save playback position
     jwp.on('time', function (event) {
       localStorage.setItem(playbackKey, event.position);
     });
-
+    
     // Clear position when complete
     jwp.on('complete', function () {
       localStorage.removeItem(playbackKey);
     });
-
+    
     // --- hls.js / Safari fallback ---
     function initHlsFunction() {
       if (typeof Hls !== "undefined") {
