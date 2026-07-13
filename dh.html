@@ -2,94 +2,156 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+  />
+
+  <!-- JW Player -->
   <script src="https://ssl.p.jwpcdn.com/player/v/8.32.0/jwplayer.js"></script>
-  <!-- Load hls.js -->
+
+  <!-- Optional hls.js fallback/helper -->
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
   <script>
-    jwplayer.key = 'cLGMn8T20tGvW+0eXPhq4NNmLB57TrscPjd1IyJF84o=';
+    jwplayer.key = "cLGMn8T20tGvW+0eXPhq4NNmLB57TrscPjd1IyJF84o=";
   </script>
+
   <style>
+    html,
     body {
       margin: 0;
-      overflow: hidden;
-    }
-    
-    #player {
+      padding: 0;
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background-color: #000;
+      background: #000;
     }
-    
-    /* Custom player styles */
+
+    #player {
+      width: 100%;
+      height: 100%;
+      background: #000;
+    }
+
     .jw-title-primary {
       font-weight: bold;
       font-size: 1.5em;
       color: #ff6347 !important;
     }
-    
+
     .jwplayer .jw-progress {
-      background-color:  #06b6d4 !important;
+      background-color: #06b6d4 !important;
     }
-    
+
     .jwplayer .jw-text-time {
       color: #ff6347 !important;
     }
-    
+
     .jwplayer .jw-button:hover {
-      background: #ff6347 !important;
+      color: #ff6347 !important;
     }
-    
+
     .jw-rightclick .jw-reset {
       display: none;
     }
   </style>
 </head>
+
 <body>
   <div id="player"></div>
-  
+
   <script>
-    var jwp = jwplayer('player');
-    var pageUrl = window.location.href;
-    var playbackKey = `jwplayer-playback-position-${pageUrl}`;
-    
-    // Load saved position from localStorage
-    var savedPosition = localStorage.getItem(playbackKey);
+    const streamUrl =
+      "https://dry-snowflake-a13b.vinodyadavpothabattula666.workers.dev/dhu";
+
+    const jwp = jwplayer("player");
+    const pageUrl = window.location.href;
+    const playbackKey = "jwplayer-playback-position-" + pageUrl;
+
+    const savedPosition = parseFloat(localStorage.getItem(playbackKey) || "0");
 
     jwp.setup({
-      aspectratio: "16:9",
       width: "100%",
       height: "100%",
-      sources: [{
-        file: "https://dry-snowflake-a13b.vinodyadavpothabattula666.workers.dev/dhu", // ✅ Master Playlist
-        type: "hls",
-        default: true
-      }],
-      image: "",
-      primary: "html5",   // ✅ Ensures iPhone uses native playback
-      preload: "auto",
-      title: "",
-      bufferLength: 5,
-      hlshtml: true,      // ✅ Enable HTML5 HLS fallback
-      html5: {
-        hlsjsConfig: {
-          // Optional HLS.js tuning
-          liveSyncDuration: 3,
-          maxBufferLength: 30
+      aspectratio: "16:9",
+
+      playlist: [
+        {
+          title: "",
+          image: "",
+          sources: [
+            {
+              file: streamUrl,
+              type: "hls",
+              default: true
+            }
+          ],
+          tracks: []
         }
+      ],
+
+      primary: "html5",
+      preload: "auto",
+      autostart: false,
+      controls: true,
+      stretching: "uniform",
+
+      // Smooth playback options
+      bufferLength: 10,
+      playbackRateControls: true,
+      displayPlaybackLabel: false,
+
+      // Use hls.js where possible instead of browser native except Safari/iOS
+      hlsjsdefault: true,
+
+      hlsjsConfig: {
+        // Better startup and smoother switching
+        startLevel: -1,
+        capLevelToPlayerSize: true,
+        startFragPrefetch: true,
+
+        // Buffer tuning
+        maxBufferLength: 45,
+        maxMaxBufferLength: 90,
+        backBufferLength: 30,
+        maxBufferHole: 0.5,
+
+        // Reduce small stalls
+        highBufferWatchdogPeriod: 2,
+        nudgeOffset: 0.1,
+        nudgeMaxRetry: 5,
+
+        // Smoother ABR changes
+        abrEwmaFastLive: 3,
+        abrEwmaSlowLive: 9,
+        abrEwmaFastVoD: 3,
+        abrEwmaSlowVoD: 9,
+        abrBandWidthFactor: 0.85,
+        abrBandWidthUpFactor: 0.7,
+        abrMaxWithRealBitrate: true,
+
+        // Live/VOD compatibility
+        liveSyncDurationCount: 3,
+        liveMaxLatencyDurationCount: 8,
+
+        // Retry settings
+        fragLoadingMaxRetry: 6,
+        fragLoadingRetryDelay: 500,
+        fragLoadingMaxRetryTimeout: 8000,
+        manifestLoadingMaxRetry: 6,
+        manifestLoadingRetryDelay: 500,
+        manifestLoadingMaxRetryTimeout: 8000
       },
+
       abr: {
-        enabled: true     // ✅ Allow adaptive bitrate switching
+        enabled: true
       },
+
       cast: {
         enabled: true
       },
-      controls: true,
-      displayPlaybackLabel: false,
-      liveTimeout: 2,
-      dvrSeekLimit: 60,
-      dvrWindow: 3600,
+
       logo: {
         file: "",
         position: "top-right",
@@ -98,74 +160,141 @@
         hide: false,
         width: 100,
         height: 50
-      },
-      // Subtitles track
-      tracks: [{
-        file: "",
-        label: "English",
-        kind: "captions",
-        "default": true,
-        language: "en"
-      }]
-    });
-    
-    jwp.on('ready', function () {
-      // Seek to the saved position if available
-      if (savedPosition && !isNaN(savedPosition)) {
-        jwp.seek(parseFloat(savedPosition));
       }
-    
-      const playerContainer = document.querySelector('#player');
-    
-      // Display icon
-      const rewindContainer = playerContainer.querySelector('.jw-display-icon-rewind');
-      const forwardContainer = rewindContainer.cloneNode(true);
-      const forwardDisplayButton = forwardContainer.querySelector('.jw-icon-rewind');
-      forwardDisplayButton.style.transform = "scaleX(-1)";
-      forwardDisplayButton.ariaLabel = "Forward 10 Seconds";
-      const nextContainer = playerContainer.querySelector('.jw-display-icon-next');
-      nextContainer.parentNode.insertBefore(forwardContainer, nextContainer);
-    
-      // Control bar icon
-      playerContainer.querySelector('.jw-display-icon-next').style.display = 'none'; // Hide next button
-      const buttonContainer = playerContainer.querySelector('.jw-button-container');
-      const rewindControlBarButton = buttonContainer.querySelector(".jw-icon-rewind");
-      const forwardControlBarButton = rewindControlBarButton.cloneNode(true);
-      forwardControlBarButton.style.transform = "scaleX(-1)";
-      forwardControlBarButton.ariaLabel = "Forward 10 Seconds";
-      rewindControlBarButton.parentNode.insertBefore(forwardControlBarButton, rewindControlBarButton.nextElementSibling);
-    
-      // Add onclick handlers
-      [forwardDisplayButton, forwardControlBarButton].forEach(button => {
-        button.onclick = () => {
-          jwp.seek(jwp.getPosition() + 10);
-        };
-      });
     });
-    
+
+    jwp.on("ready", function () {
+      // Resume previous position
+      if (savedPosition && !isNaN(savedPosition) && savedPosition > 5) {
+        setTimeout(function () {
+          try {
+            jwp.seek(savedPosition);
+          } catch (e) {
+            console.log("Resume seek failed:", e);
+          }
+        }, 800);
+      }
+
+      addForwardButton();
+    });
+
     // Save playback position
-    jwp.on('time', function (event) {
-      localStorage.setItem(playbackKey, event.position);
+    jwp.on("time", function (event) {
+      if (event && typeof event.position === "number") {
+        localStorage.setItem(playbackKey, event.position);
+      }
     });
-    
-    // Clear position when complete
-    jwp.on('complete', function () {
+
+    // Clear saved position after complete
+    jwp.on("complete", function () {
       localStorage.removeItem(playbackKey);
     });
-    
-    // --- hls.js / Safari fallback ---
-    function initHlsFunction() {
-      if (typeof Hls !== "undefined") {
-        if (Hls.isSupported()) {
-          console.log("✅ hls.js is supported and running.");
-        } else {
-          console.log("ℹ️ Falling back to native HLS (Safari / iPhone).");
+
+    // Auto-recover small playback errors
+    jwp.on("error", function (error) {
+      console.log("JWPlayer error:", error);
+
+      setTimeout(function () {
+        try {
+          const currentPosition = jwp.getPosition();
+          jwp.load([
+            {
+              sources: [
+                {
+                  file: streamUrl,
+                  type: "hls"
+                }
+              ]
+            }
+          ]);
+
+          jwp.once("play", function () {
+            if (currentPosition > 0) {
+              jwp.seek(currentPosition);
+            }
+          });
+
+          jwp.play();
+        } catch (e) {
+          console.log("Recovery failed:", e);
         }
-      } else {
-        console.log("⚠️ hls.js not loaded, relying on JWPlayer native handling.");
+      }, 1500);
+    });
+
+    // Handle buffering info
+    jwp.on("buffer", function () {
+      console.log("Buffering...");
+    });
+
+    jwp.on("play", function () {
+      console.log("Playing smoothly");
+    });
+
+    function addForwardButton() {
+      const playerContainer = document.querySelector("#player");
+      if (!playerContainer) return;
+
+      const rewindContainer = playerContainer.querySelector(
+        ".jw-display-icon-rewind"
+      );
+
+      const nextContainer = playerContainer.querySelector(
+        ".jw-display-icon-next"
+      );
+
+      if (rewindContainer && nextContainer && nextContainer.parentNode) {
+        const forwardContainer = rewindContainer.cloneNode(true);
+        const forwardDisplayButton =
+          forwardContainer.querySelector(".jw-icon-rewind");
+
+        if (forwardDisplayButton) {
+          forwardDisplayButton.style.transform = "scaleX(-1)";
+          forwardDisplayButton.ariaLabel = "Forward 10 Seconds";
+          forwardDisplayButton.onclick = function () {
+            jwp.seek(jwp.getPosition() + 10);
+          };
+        }
+
+        nextContainer.parentNode.insertBefore(forwardContainer, nextContainer);
+        nextContainer.style.display = "none";
+      }
+
+      const buttonContainer = playerContainer.querySelector(
+        ".jw-button-container"
+      );
+
+      if (buttonContainer) {
+        const rewindControlBarButton =
+          buttonContainer.querySelector(".jw-icon-rewind");
+
+        if (rewindControlBarButton && rewindControlBarButton.parentNode) {
+          const forwardControlBarButton =
+            rewindControlBarButton.cloneNode(true);
+
+          forwardControlBarButton.style.transform = "scaleX(-1)";
+          forwardControlBarButton.ariaLabel = "Forward 10 Seconds";
+          forwardControlBarButton.onclick = function () {
+            jwp.seek(jwp.getPosition() + 10);
+          };
+
+          rewindControlBarButton.parentNode.insertBefore(
+            forwardControlBarButton,
+            rewindControlBarButton.nextElementSibling
+          );
+        }
       }
     }
-    initHlsFunction();
+
+    // Check HLS support
+    if (typeof Hls !== "undefined") {
+      if (Hls.isSupported()) {
+        console.log("hls.js supported.");
+      } else {
+        console.log("Using native HLS, usually Safari/iPhone.");
+      }
+    } else {
+      console.log("hls.js not loaded. JWPlayer native handling only.");
+    }
   </script>
 </body>
 </html>
