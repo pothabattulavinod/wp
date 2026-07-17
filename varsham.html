@@ -13,6 +13,8 @@
     body {
       margin: 0;
       overflow: hidden;
+      background-color: #000;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
     
     #player {
@@ -30,7 +32,7 @@
     }
     
     .jwplayer .jw-progress {
-      background-color:  #06b6d4 !important;
+      background-color: #06b6d4 !important;
     }
     
     .jwplayer .jw-text-time {
@@ -44,10 +46,36 @@
     .jw-rightclick .jw-reset {
       display: none;
     }
+
+    /* Toast notification for screen mode */
+    #mode-toast {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-20px);
+      background: rgba(0, 0, 0, 0.85);
+      color: #ff6347;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: bold;
+      z-index: 99999999;
+      opacity: 0;
+      transition: opacity 0.3s, transform 0.3s;
+      pointer-events: none;
+      border: 1px solid #ff6347;
+      box-shadow: 0 4px 12px rgba(255, 99, 71, 0.3);
+    }
+
+    #mode-toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
   </style>
 </head>
 <body>
   <div id="player"></div>
+  <div id="mode-toast">Mode: Fit (Aspect)</div>
   
   <script>
     var jwp = jwplayer('player');
@@ -56,31 +84,29 @@
     
     // Load saved position from localStorage
     var savedPosition = localStorage.getItem(playbackKey);
-
     jwp.setup({
       aspectratio: "16:9",
       width: "100%",
       height: "100%",
       sources: [{
-        file: "https://pothabattulavinod.github.io/pay/varsham.m3u8", // ✅ Master Playlist
+        file: "https://pothabattulavinod.github.io/pay/varsham.m3u8", // Master Playlist
         type: "hls",
         default: true
       }],
       image: "",
-      primary: "html5",   // ✅ Ensures iPhone uses native playback
+      primary: "html5",   // Ensures iPhone uses native playback
       preload: "auto",
       title: "",
       bufferLength: 5,
-      hlshtml: true,      // ✅ Enable HTML5 HLS fallback
+      hlshtml: true,      // Enable HTML5 HLS fallback
       html5: {
         hlsjsConfig: {
-          // Optional HLS.js tuning
           liveSyncDuration: 3,
           maxBufferLength: 30
         }
       },
       abr: {
-        enabled: true     // ✅ Allow adaptive bitrate switching
+        enabled: true     // Allow adaptive bitrate switching
       },
       cast: {
         enabled: true
@@ -99,7 +125,6 @@
         width: 100,
         height: 50
       },
-      // Subtitles track
       tracks: [{
         file: "",
         label: "English",
@@ -109,6 +134,29 @@
       }]
     });
     
+    // Toast helper
+    function showToast(text) {
+      const toast = document.getElementById('mode-toast');
+      toast.innerText = text;
+      toast.classList.add('show');
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(() => {
+        toast.classList.remove('show');
+      }, 2500);
+    }
+
+    // Ratio and fitting modes list to cycle through on touch
+    const cycleModes = [
+      { type: 'stretching', value: 'uniform', label: 'Fit (Aspect)' },
+      { type: 'stretching', value: 'fill', label: 'Fill / Zoom (Large)' },
+      { type: 'stretching', value: 'exactfit', label: 'Stretch (Full)' },
+      { type: 'stretching', value: 'none', label: 'Original (1:1)' },
+      { type: 'aspect', value: '16:9', label: 'Aspect: 16:9 Widescreen' },
+      { type: 'aspect', value: '21:9', label: 'Aspect: 21:9 Ultrawide' },
+      { type: 'aspect', value: '4:3', label: 'Aspect: 4:3 Standard' }
+    ];
+    let currentModeIndex = 0;
+
     jwp.on('ready', function () {
       // Seek to the saved position if available
       if (savedPosition && !isNaN(savedPosition)) {
@@ -117,30 +165,80 @@
     
       const playerContainer = document.querySelector('#player');
     
-      // Display icon
+      // --- Add Forward 10s button ---
       const rewindContainer = playerContainer.querySelector('.jw-display-icon-rewind');
-      const forwardContainer = rewindContainer.cloneNode(true);
-      const forwardDisplayButton = forwardContainer.querySelector('.jw-icon-rewind');
-      forwardDisplayButton.style.transform = "scaleX(-1)";
-      forwardDisplayButton.ariaLabel = "Forward 10 Seconds";
-      const nextContainer = playerContainer.querySelector('.jw-display-icon-next');
-      nextContainer.parentNode.insertBefore(forwardContainer, nextContainer);
-    
-      // Control bar icon
-      playerContainer.querySelector('.jw-display-icon-next').style.display = 'none'; // Hide next button
+      if (rewindContainer) {
+        const forwardContainer = rewindContainer.cloneNode(true);
+        const forwardDisplayButton = forwardContainer.querySelector('.jw-icon-rewind');
+        forwardDisplayButton.style.transform = "scaleX(-1)";
+        forwardDisplayButton.ariaLabel = "Forward 10 Seconds";
+        const nextContainer = playerContainer.querySelector('.jw-display-icon-next');
+        if (nextContainer && nextContainer.parentNode) {
+          nextContainer.parentNode.insertBefore(forwardContainer, nextContainer);
+        }
+
+        // Control bar icon for forward
+        playerContainer.querySelector('.jw-display-icon-next').style.display = 'none'; // Hide next button
+        const buttonContainer = playerContainer.querySelector('.jw-button-container');
+        if (buttonContainer) {
+          const rewindControlBarButton = buttonContainer.querySelector(".jw-icon-rewind");
+          if (rewindControlBarButton) {
+            const forwardControlBarButton = rewindControlBarButton.cloneNode(true);
+            forwardControlBarButton.style.transform = "scaleX(-1)";
+            forwardControlBarButton.ariaLabel = "Forward 10 Seconds";
+            rewindControlBarButton.parentNode.insertBefore(forwardControlBarButton, rewindControlBarButton.nextElementSibling);
+
+            // Add onclick handlers for forward buttons
+            [forwardDisplayButton, forwardControlBarButton].forEach(button => {
+              button.onclick = () => {
+                jwp.seek(jwp.getPosition() + 10);
+              };
+            });
+          }
+        }
+      }
+
+      // --- Add Cycle Ratio Button with Exact Native Button Sizing & Placement ---
       const buttonContainer = playerContainer.querySelector('.jw-button-container');
-      const rewindControlBarButton = buttonContainer.querySelector(".jw-icon-rewind");
-      const forwardControlBarButton = rewindControlBarButton.cloneNode(true);
-      forwardControlBarButton.style.transform = "scaleX(-1)";
-      forwardControlBarButton.ariaLabel = "Forward 10 Seconds";
-      rewindControlBarButton.parentNode.insertBefore(forwardControlBarButton, rewindControlBarButton.nextElementSibling);
-    
-      // Add onclick handlers
-      [forwardDisplayButton, forwardControlBarButton].forEach(button => {
-        button.onclick = () => {
-          jwp.seek(jwp.getPosition() + 10);
-        };
-      });
+      if (buttonContainer) {
+        const referenceButton = buttonContainer.querySelector('.jw-icon-rewind') || buttonContainer.querySelector('.jw-button');
+        if (referenceButton) {
+          const ratioControlBarButton = referenceButton.cloneNode(true);
+          ratioControlBarButton.id = 'custom-ratio-btn';
+          ratioControlBarButton.removeAttribute('style');
+          ratioControlBarButton.setAttribute('aria-label', 'Change Screen Ratio & Fit');
+          ratioControlBarButton.title = 'Touch to Change Ratio & Fit';
+          
+          // Inject perfectly sized icon matching native control buttons
+          ratioControlBarButton.innerHTML = '<div class="jw-icon jw-icon-inline" style="display:flex; align-items:center; justify-content:center; width:100%; height:100%;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" style="fill:currentColor; display:block;"><path d="M3 5h18v14H3V5zm2 2v10h14V7H5zm3 2h8v6H8V9z"/></svg></div>';
+
+          // Insert before fullscreen button or append
+          const fsButton = buttonContainer.querySelector('.jw-icon-fullscreen') || buttonContainer.querySelector('.jw-button:last-child');
+          if (fsButton && fsButton.parentNode) {
+            fsButton.parentNode.insertBefore(ratioControlBarButton, fsButton);
+          } else {
+            buttonContainer.appendChild(ratioControlBarButton);
+          }
+
+          // Cycle on click/touch logic
+          ratioControlBarButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+
+            // Move to next mode
+            currentModeIndex = (currentModeIndex + 1) % cycleModes.length;
+            const mode = cycleModes[currentModeIndex];
+
+            if (mode.type === 'stretching') {
+              jwp.setConfig({ stretching: mode.value });
+            } else if (mode.type === 'aspect') {
+              jwp.setConfig({ width: '100%', aspectratio: mode.value });
+            }
+
+            showToast(mode.label);
+          });
+        }
+      }
     });
     
     // Save playback position
